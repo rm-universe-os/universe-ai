@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'">
+  <title>Universe AI — Setup</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <canvas id="deep"></canvas>
+  <div id="win">
+    <header id="bar">
+      <span class="logo-mark">◈</span>
+      <span class="title">UNIVERSE <b>AI</b> — SETUP</span>
+      <span class="spacer"></span>
+      <button id="btn-close" title="Cancel">✕</button>
+    </header>
+
+    <main id="body">
+      <img id="logo" src="../assets/logo.png" alt="Universe AI">
+
+      <section id="alert-view">
+        <h1>Local LLM required</h1>
+        <p>Universe AI runs a <b>local</b> language model on this machine —
+           no cloud, no accounts, fully private.</p>
+        <p class="dim">One-time download: model + runtime (~4 GB total).
+           After this, everything works offline.</p>
+        <div class="btns">
+          <button id="btn-download">▼ &nbsp;Download &amp; Install</button>
+          <button id="btn-cancel">Not now</button>
+        </div>
+        <p id="err" class="err hidden"></p>
+      </section>
+
+      <section id="prog-view" class="hidden">
+        <div class="phase" id="ph1"><span class="dot"></span><span class="msg">Checking prerequisites…</span></div>
+        <div class="phase" id="ph2"><span class="dot"></span><span class="msg">Downloading model…</span></div>
+        <div class="phase" id="ph3"><span class="dot"></span><span class="msg">Extracting…</span></div>
+        <div class="phase" id="ph4"><span class="dot"></span><span class="msg">Starting…</span></div>
+        <div id="bar-wrap"><div id="bar-fill"></div></div>
+        <div id="bytes"></div>
+        <div id="final-msg" class="hidden">
+          <button id="btn-enter">✦ &nbsp;Launch Universe AI</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="setup.js"></script>
+</body>
+</html>
