@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'">
+  <title>Universe AI — Chat</title>
+  <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+  <div id="win">
+    <canvas id="deep"></canvas>
+    <header id="bar">
+      <div class="brand">
+        <span class="logo-mark">◈</span>
+        <span class="logo-text">UNIVERSE <b>AI</b></span>
+      </div>
+      <span id="state-orb" data-state="idle" title="idle"></span>
+      <span class="spacer"></span>
+      <span id="agent">AGENT</span>
+      <button id="btn-hist" title="History">◫</button>
+      <button id="btn-clear" title="Clear (Ctrl+U)">⌫</button>
+      <button id="btn-close" title="Close (Esc)">✕</button>
+    </header>
+    <div id="hist-panel" class="hidden">
+      <div class="hist-head">
+        <span>HISTORY</span>
+        <button id="hist-close" title="Close">✕</button>
+      </div>
+      <div id="hist-list"></div>
+    </div>
+    <div id="orbit-line"><span class="planet"></span></div>
+    <main id="scroll"><div id="log"></div></main>
+    <footer id="foot">
+      <div id="status" class="hidden">
+        <span class="orbit-spinner"><i></i></span>
+        <span id="status-text">thinking…</span>
+      </div>
+      <div id="askbox">
+        <div id="ask-label"><span class="star">✦</span> ASK THE UNIVERSE</div>
+        <div id="inputrow">
+          <span id="prompt">❯</span>
+          <span id="ph">what is my disk usage?</span>
+          <textarea id="input" rows="1" placeholder="" spellcheck="false"></textarea>
+          <button id="btn-send" title="Send (Enter)">▲</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="chat.js"></script>
+</body>
+</html>
