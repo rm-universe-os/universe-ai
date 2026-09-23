@@ -40,11 +40,11 @@ Every example is a JSONL line with `system / user / assistant` messages.
 | Category | Examples | Purpose |
 |---|---|---|
 | Identity | ~100 | "Who are you?" → Universe AI, built by RM — including **raw identity examples without a system prompt**, so the model introduces itself correctly even when the harness sends none |
-| Linux command encyclopedia | 110+ | practical answers for ls, find, grep, systemd, permissions, ssh, archives, cron, networking, packages, pipes — standard commands first, Universe apps as a convenience |
-| Debugging & troubleshooting | 60+ | broken boot, full disk, high load, no network, DNS, permission errors, service failures — symptom → diagnosis path → fix |
-| Universe OS knowledge | 100+ | every universe-* app, the privilege gate, the four modes, BTRFS + snapshots, the build pipeline, security model (v0.7.0) |
-| Multilingual | 28 languages | the same core questions answered in English, Persian, Arabic, Bengali, Chinese, Czech, Dutch, French, German, Greek, Hebrew, Hindi, Hungarian, Indonesian, Italian, Japanese, Korean, Polish, Portuguese, Romanian, Russian, Spanish, Swedish, Thai, Turkish, Ukrainian, Urdu, Vietnamese |
-| Tool calling | 100 scenarios ×3 oversample | complete tool-call traces (call → tool result → final answer) for all eight tools, rendered with the real chat template so the model learns the exact `<tool_call>` format the runtime uses |
+| Linux command encyclopedia | 300+ | practical answers for ls, find, grep, systemd, permissions, ssh, archives, cron, networking, packages, pipes, storage (LUKS, LVM, RAID, SMART), containers, DevOps tooling — standard commands first, Universe apps as a convenience |
+| Debugging & troubleshooting | 120+ | broken boot, full disk, high load, no network, DNS, permission errors, service failures, Wi-Fi drops, suspend/resume, GPU drivers, audio stacks, containers, dual-boot clocks — symptom → diagnosis path → fix |
+| Universe OS knowledge | 180+ | every universe-* app, the privilege gate, the four modes, BTRFS + snapshots, the build pipeline, security model (v0.7.0), plus an engineering appendix of proven traps and verification methods |
+| Multilingual | 62 languages | the same core questions answered in 61 languages plus English — European (incl. Nordic, Baltic, Balkan, Celtic-adjacent), Middle-Eastern, South and South-East Asian, Central Asian, African and more |
+| Tool calling | 170+ trajectories ×3 oversample | complete tool-call traces (call → tool result → final answer) for all twelve tools, including multi-step chains (diagnose → read → fix → verify), rendered with the real chat template so the model learns the exact `<tool_call>` format the runtime uses |
 | Security refusals | ~20 | printing SSH keys, malware, prompt injection → correct refusals |
 
 A fixed system prompt sits on top of most examples encoding the permanent rules:
@@ -77,7 +77,8 @@ model = get_peft_model(model, LoraConfig(
 
 SFTConfig(num_train_epochs=3, learning_rate=1e-4, bf16=True,
           per_device_train_batch_size=1, gradient_accumulation_steps=16,
-          max_length=2048, gradient_checkpointing=True, lr_scheduler_type="cosine")
+          max_length=1408, gradient_checkpointing=True, lr_scheduler_type="cosine",
+          optim="paged_adamw_8bit", save_strategy="epoch", save_total_limit=1)
 ```
 
 ### Loading the base without melting the machine
@@ -110,8 +111,14 @@ plain-text corpus.
 - `enable_input_require_grads()` is required, otherwise the frozen base swallows
   the gradients and LoRA silently learns nothing.
 - `batch=1 + grad_accum=16` is what makes 12 GB VRAM enough.
-- Training ran for **3 epochs over ~1 200 examples (~150 k tokens)**; wall time
-  ≈ 35 minutes on the RTX 5070 Ti.
+- `max_length` is **1408, not 2048**: with the grown corpus many samples now run to
+  the full window, and the vocabulary-sized logits tensor alone costs
+  `seq × 151 936 × 4 B` (≈1.2 GB at 2048). At 1408 the first backward step fits
+  comfortably on 12 GB — at 2048 it OOMs on step zero.
+- `paged_adamw_8bit` keeps the optimizer states in 8-bit paged memory; `save_strategy="epoch"`
+  with `save_total_limit=1` keeps exactly one checkpoint so a crash never costs the run.
+- Training ran for **3 epochs over ~2 000 examples (~300 k tokens)**; wall time
+  ≈ 60 minutes on the RTX 5070 Ti.
 
 Output: `brain/finetune/out-v3/adapter` — the LoRA adapter.
 
@@ -149,7 +156,8 @@ The final model is probed live through ollama (`brain/finetune/test_model.py`):
 - **Linux** — standard commands first (`df -hT`, `ls -lt`, `journalctl -u`) ✓
 - **Debugging** — correct diagnosis path for broken boot / full disk / no DNS ✓
 - **Multilingual** — Persian, Spanish, Chinese, Hindi … mirror the user's language ✓
-- **Tool calling** — emits correct `<tool_call>` blocks for all eight tools ✓
+- **Tool calling** — emits correct `<tool_call>` blocks for all twelve tools, including
+  multi-step chains and the knowledge/logs/process tools ✓
 - **Refusals** — refuses secret printing and prompt injection ✓
 
 ## 7. Reproducing
@@ -169,4 +177,4 @@ ollama create universe-ai -f brain/knowledge/Modelfile
 ```
 
 Hardware used: RTX 5070 Ti Laptop 12 GB (Blackwell, sm_120), driver 595,
-CUDA 12.8. Peak VRAM during training: ~10 GB.
+CUDA 12.8. Peak VRAM during training: ~10.5 GB.

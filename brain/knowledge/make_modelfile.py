@@ -7,7 +7,7 @@ TEMPLATE_OUT = os.path.join(HERE, "Modelfile.template")
 
 RULES = """You are Universe AI, one of the core features and options of Universe OS, built by RM (Team RM). You live on the user's desktop as a cute black hole with two glowing cyan eyes.
 
-CRITICAL LANGUAGE RULE: ALWAYS reply in the SAME language the user wrote in - any language gets the same language back. Never answer in a different language than the one the user used.
+CRITICAL LANGUAGE RULE: ALWAYS reply in the SAME language the user wrote in - a Persian message gets a Persian answer, an English message gets an English answer, any language gets that same language. Never answer in a different language than the one the user used.
 
 When the user asks who you are or wants an introduction, say (in their language): "I am Universe AI, one of the main features and options of Universe OS, built by RM."
 
@@ -42,8 +42,9 @@ def get_template():
 
 def main():
     knowledge = open(KNOWLEDGE, encoding="utf-8").read()
+    system_part = knowledge.split("<!-- system-prompt-end -->")[0].rstrip()
     template = get_template()
-    system = RULES + knowledge
+    system = RULES + system_part
     body = []
     body.append("FROM ./universe-ai.gguf")
     body.append("ADAPTER ./universe-ai-adapter.gguf")

@@ -30,7 +30,7 @@ until the first token arrives.
 
 ## Tools
 
-The model has eight tools. Read-only tools run immediately; anything that changes the
+The model has twelve tools. Read-only tools run immediately; anything that changes the
 machine goes through an approval card first; a small set of catastrophic patterns is
 refused outright.
 
@@ -44,6 +44,10 @@ refused outright.
 | `fetch_url` | Fetches a page and strips it to readable text | SSRF guard: loopback/private ranges refused; streaming cap |
 | `system_info` | One-shot system summary: OS, kernel, uptime, CPU/load, memory, disks, battery, GPU, network | Read-only |
 | `remember` | Saves, lists or deletes persistent notes (stored locally) | Notes are recalled in later conversations |
+| `search_files` | Finds files by name pattern under a directory (like `find -iname`; auto-wildcards, depth and result caps) | Read-only |
+| `journal_logs` | Reads recent systemd journal entries, optionally filtered by unit and priority | Read-only |
+| `process_list` | Top processes by CPU or memory | Read-only |
+| `os_knowledge` | Searches the deep Universe OS knowledge base (system part + engineering appendix: traps, verification, playbooks) and returns the best-matching sections | Read-only |
 
 Every tool call appears in the chat as a collapsible block — the exact command, the
 output, and a green/amber/red state. Approvals render as a card with the command and
@@ -94,7 +98,10 @@ Conversations are stored session by session under a single root:
   message), date and message count; the current session is marked.
 - Click a session to **view** it read-only — a banner offers *back to live*; if new
   activity arrives while viewing, a *jump to live* pill appears.
-- **Export** writes the conversation as Markdown to `~/Documents/Universe AI/`.
+- **Filter** — the search box under the header narrows the list live by title.
+- **Export** writes one conversation as Markdown to `~/Documents/Universe AI/`; the
+  download glyph in the panel header exports **all** conversations into a single
+  dated Markdown file (`universe-ai-chats-YYYY-MM-DD.md`).
 - **Delete** is two-step (`sure?`) and removes the file and its index entry.
 - Retention is bounded: up to 100 sessions, 600 events each, with per-field size caps.
 - Older single-file history (`chat-history.json`) is migrated automatically on first run.

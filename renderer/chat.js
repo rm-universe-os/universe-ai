@@ -601,16 +601,31 @@ function fmtWhen(iso) {
     })
 }
 
+let histCache = [];
+let histCurrent = null;
+
 function renderHistoryList(sessions, currentId) {
+    histCache = sessions || [];
+    histCurrent = currentId;
+    const q = (document.getElementById("hist-search") || {}).value || "";
+    const filter = q.trim().toLowerCase();
+    const list = filter ? histCache.filter(s => String(s.title || "").toLowerCase().includes(filter)) : histCache;
     histList.innerHTML = "";
-    if (!sessions || !sessions.length) {
+    if (!histCache.length) {
         const e = document.createElement("div");
         e.className = "hist-empty";
         e.textContent = "no conversations yet \u2014 say something to the universe";
         histList.appendChild(e);
         return
     }
-    for (const s of sessions) {
+    if (!list.length) {
+        const e = document.createElement("div");
+        e.className = "hist-empty";
+        e.textContent = "no conversation matches \u201C" + q.trim() + "\u201D";
+        histList.appendChild(e);
+        return
+    }
+    for (const s of list) {
         const row = document.createElement("div");
         row.className = "hist-item";
         if (s.id === currentId) row.classList.add("current");
@@ -674,6 +689,12 @@ ipcRenderer.on("chat-history-list", (e, m) => {
 ipcRenderer.on("chat-history-exported", (e, m) => {
     if (m && m.ok) histNoteShow("exported \u2192 " + m.file);
     else histNoteShow("export failed")
+});
+const histSearch = document.getElementById("hist-search");
+if (histSearch) histSearch.addEventListener("input", () => renderHistoryList(histCache, histCurrent));
+const histExportAll = document.getElementById("hist-export-all");
+if (histExportAll) histExportAll.addEventListener("click", () => {
+    ipcRenderer.send("chat-history-export-all")
 });
 document.getElementById("btn-hist").addEventListener("click", () => {
     histPanel.classList.toggle("hidden");

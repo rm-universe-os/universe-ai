@@ -20,8 +20,9 @@ from peft import LoraConfig, get_peft_model
 from trl import SFTTrainer, SFTConfig
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BLOB = os.path.expanduser("~/.ollama/models/blobs/sha256-85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9")
-GGUF_DIR = "/tmp/universe-ai-gguf"
+BLOB = os.environ.get("UAI_BASE_BLOB") or os.path.expanduser(
+    "~/.ollama/models/blobs/sha256-85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9")
+GGUF_DIR = "/tmp/opencode/gguf-work"
 GGUF = os.path.join(GGUF_DIR, "universe-ai.gguf")
 DATA = os.path.join(HERE, "..", "knowledge", "dataset-v3-full.jsonl")
 TOOLS_DATA = os.path.join(HERE, "..", "knowledge", "dataset-v3-tools.jsonl")
@@ -38,7 +39,7 @@ tok = AutoTokenizer.from_pretrained(REPO)
 print("[1/5] loading base GGUF (streaming dequantize, low RAM)...", flush=True)
 cfg_dict = load_gguf_checkpoint(GGUF, return_tensors=False)["config"]
 config = AutoConfig.for_model(**cfg_dict)
-model = AutoModelForCausalLM.from_config(config, dtype=torch.bfloat16)
+model = AutoModelForCausalLM.from_config(config, dtype=torch.bfloat16, attn_implementation="sdpa")
 mapping = get_gguf_hf_weights_map(model)
 params = dict(model.named_parameters(remove_duplicate=False))
 buffers = dict(model.named_buffers())
@@ -75,7 +76,7 @@ print(f"      loaded in {time.time()-t0:.0f}s", flush=True)
 
 print("[2/5] attaching LoRA r=64 alpha=128...", flush=True)
 model = get_peft_model(model, LoraConfig(
-    r=64, lora_alpha=128, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM",
+    r=32, lora_alpha=64, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM",
     target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
 model.print_trainable_parameters()
 
@@ -109,10 +110,10 @@ print(f"      total: {len(ds)} (text {len(rows_text)}, tools {len(rows_yes)}x{TO
 print("[4/5] training...", flush=True)
 args = SFTConfig(
     output_dir=OUT,
-    per_device_train_batch_size=1, gradient_accumulation_steps=16,
+    per_device_train_batch_size=1, gradient_accumulation_steps=24,
     num_train_epochs=3, learning_rate=1e-4, lr_scheduler_type="cosine",
     warmup_ratio=0.05, logging_steps=10, save_strategy="epoch", save_total_limit=1,
-    bf16=True, max_length=2048, packing=False, optim="paged_adamw_8bit",
+    bf16=True, max_length=1152, packing=False, optim="paged_adamw_8bit",
     report_to=[], dataset_text_field="text", gradient_checkpointing=True,
     seed=42)
 trainer = SFTTrainer(model=model, args=args, train_dataset=ds, processing_class=tok)

@@ -25,8 +25,12 @@
     <div id="hist-panel" class="hidden">
       <div class="hist-head">
         <span>HISTORY</span>
-        <button id="hist-close" title="Close">✕</button>
+        <div class="hist-head-acts">
+          <button id="hist-export-all" title="Export all conversations">⤓</button>
+          <button id="hist-close" title="Close">✕</button>
+        </div>
       </div>
+      <div id="hist-search-row"><input id="hist-search" type="text" placeholder="filter conversations…" spellcheck="false"/></div>
       <div id="hist-list"></div>
       <div id="hist-note" class="hidden"></div>
     </div>
