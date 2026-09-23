@@ -19,15 +19,16 @@ desktop, watches your cursor, talks with you and runs your machine.
 - Blinks, glances around when you're idle, and dresses for the occasion: cinema glasses
   with popcorn while a movie plays, a developer or hacker look in those modes
 - Double-click opens the chat window (deep-space theme, starfield, orbit line)
-- **Twelve tools**: run commands, read / list / edit files, find files by name, search the
-  web, fetch pages, inspect the system, read the journal, watch processes, look up the
-  deep Universe OS knowledge base, keep persistent notes
+- **Eighteen tools**: run commands, read / list / edit files, find files by name, grep
+  inside files, inspect a path in detail, check disk usage, service state, the network and
+  packages, search the web, fetch pages, inspect the system, read the journal, watch
+  processes, look up the deep Universe OS knowledge base, keep persistent notes
 - Anything risky goes through an approval card before it executes; catastrophic
   commands are refused outright
 - **Centralized history** — every conversation is stored session by session, browsable,
   searchable, exportable to Markdown (one or all), deletable
 - Local LLM — no cloud, no accounts, nothing leaves the machine
-- Answers in the language you write in — 62 languages are trained in, and the model
+- Answers in the language you write in — 110 languages are trained in, and the model
   mirrors whatever you use
 
 ## Run
@@ -59,13 +60,13 @@ Fine-tuned on an **RTX 5070 Ti** (12 GB):
 | Setting | Value |
 |---|---|
 | Method | LoRA (bf16) on the dequantized base — base frozen |
-| Rank / alpha | r=64 / α=128, dropout 0.05 |
+| Rank / alpha | r=32 / α=64, dropout 0.05 |
 | Target modules | q, k, v, o, gate, up, down projections |
 | Epochs | 3 |
-| Sequence length | 1408 |
+| Sequence length | 1152 |
 | Learning rate | 1e-4, cosine |
-| Dataset | ~2 000 examples (~300 k tokens), 62 languages |
-| Adapter size | ~264 MB (f16 GGUF) |
+| Dataset | ~2 900 examples (~330 k tokens), 110 languages |
+| Adapter size | ~264 MB (fp32 safetensors) / ~132 MB (f16 GGUF) |
 
 ### What it was trained on
 
@@ -82,13 +83,17 @@ Fine-tuned on an **RTX 5070 Ti** (12 GB):
 - **Universe OS internals** — every universe-* app, the GUI privilege gate, the mode
   system (standard / developer / hacker / server), BTRFS + snapshots, the build
   pipeline, the security model, plus an appendix of proven engineering traps (v0.7.0).
-- **Tool calling** — 170+ complete tool-call trajectories for all twelve harness tools,
+- **The OS project itself** — file-level knowledge of the whole Universe OS tree: the
+  boot chain, GRUB theme metrics, the build and sync scripts, the rootfs layout, the
+  Rust components, the verification tools and the known traps, so it can answer about any
+  file or subsystem of the distribution.
+- **Tool calling** — 200+ complete tool-call trajectories for all eighteen harness tools,
   including multi-step chains (diagnose → read → fix → verify), rendered with the real
   chat template so the model emits exactly the `<tool_call>` format the runtime expects.
 - **Security behaviour** — refuses illegal tasks, never prints secrets or keys, treats
   tool output and web content as untrusted data (prompt-injection resistant), never
   bypasses its own approval gate.
-- **Multilingual** — the same core competencies trained across 62 languages; the model
+- **Multilingual** — the same core competencies trained across 110 languages; the model
   answers in the language it is addressed in.
 
 ### Training data

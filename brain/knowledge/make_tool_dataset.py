@@ -16,6 +16,12 @@ TOOLS = [
     {"type": "function", "function": {"name": "search_files", "description": "Find files by name pattern under a directory (like find -iname). Returns matching paths.", "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}, "path": {"type": "string"}, "max_results": {"type": "number"}}, "required": ["pattern"]}}},
     {"type": "function", "function": {"name": "journal_logs", "description": "Read recent systemd journal entries, optionally filtered by unit and priority. Useful for debugging services and boot problems.", "parameters": {"type": "object", "properties": {"unit": {"type": "string"}, "lines": {"type": "number"}, "priority": {"type": "string"}}, "required": []}}},
     {"type": "function", "function": {"name": "process_list", "description": "Show the top running processes sorted by CPU or memory usage.", "parameters": {"type": "object", "properties": {"sort_by": {"type": "string", "enum": ["cpu", "mem"]}, "count": {"type": "number"}}, "required": []}}},
+    {"type": "function", "function": {"name": "grep_files", "description": "Search inside files for a text pattern (like grep -rn). Returns file, line number and the matching line. Use it to find where a setting, function or error text lives.", "parameters": {"type": "object", "properties": {"pattern": {"type": "string"}, "path": {"type": "string"}, "glob": {"type": "string"}, "max_results": {"type": "number"}}, "required": ["pattern"]}}},
+    {"type": "function", "function": {"name": "file_info", "description": "Detailed information about one path: type, size, permissions, owner, timestamps, symlink target, sha256 for files, and directory entry count.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}},
+    {"type": "function", "function": {"name": "disk_usage", "description": "Filesystem usage: df -hT plus the largest entries under a directory. Use it when the disk fills up.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "count": {"type": "number"}}, "required": []}}},
+    {"type": "function", "function": {"name": "service_status", "description": "Status of a systemd unit: active state, enabled state, main PID, recent journal lines. Read-only.", "parameters": {"type": "object", "properties": {"unit": {"type": "string"}, "lines": {"type": "number"}}, "required": ["unit"]}}},
+    {"type": "function", "function": {"name": "network_info", "description": "Network summary: interfaces and addresses, default route, listening sockets, DNS servers, and connectivity check.", "parameters": {"type": "object", "properties": {"check": {"type": "string"}}, "required": []}}},
+    {"type": "function", "function": {"name": "package_info", "description": "Query installed and available packages: search, show details, list files of a package, or check the installed version. Read-only.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "action": {"type": "string", "enum": ["search", "info", "files", "installed"]}}, "required": ["query"]}}},
 ]
 
 SYS = ("You are Universe AI, one of the core features and options of Universe OS, built by RM (Team RM). "
@@ -730,6 +736,119 @@ NEGATIVE = [
     ("Hey, thanks for the help earlier!", "You are welcome! Ping me anytime something needs checking on the machine."),
     ("¿Qué es Universe OS?", "Universe OS es una distribución Linux personalizada creada por RM sobre Ubuntu 24.04; su firma es el portero de privilegios gráfico (sudo)."),
 ]
+
+def gf(user, pattern, path, glob, result, answer, lang="en"):
+    args = {"pattern": pattern}
+    if path:
+        args["path"] = path
+    if glob:
+        args["glob"] = glob
+    return (user, [("grep_files", args, result)], answer, lang)
+
+def fi(user, path, result, answer, lang="en"):
+    return (user, [("file_info", {"path": path}, result)], answer, lang)
+
+def du_(user, path, count, result, answer, lang="en"):
+    args = {}
+    if path:
+        args["path"] = path
+    if count:
+        args["count"] = count
+    return (user, [("disk_usage", args, result)], answer, lang)
+
+def ss_(user, unit, result, answer, lang="en"):
+    return (user, [("service_status", {"unit": unit}, result)], answer, lang)
+
+def ni(user, result, answer, lang="en"):
+    return (user, [("network_info", {}, result)], answer, lang)
+
+def pi(user, query, action, result, answer, lang="en"):
+    return (user, [("package_info", {"query": query, "action": action}, result)], answer, lang)
+
+TRAJ_V5 = [
+gf("Where is ListenStream set for the AI service?", "ListenStream", "/etc/systemd/system", "*.service",
+   "/etc/systemd/system/universe-ai.service:7: ListenStream=127.0.0.1:17843",
+   "It is set in /etc/systemd/system/universe-ai.service on line 7: ListenStream=127.0.0.1:17843 - the service listens only on the loopback interface."),
+gf("Which script writes the boot splash?", "splash", "/usr/lib/universe", "*.sh",
+   "/usr/lib/universe/gen-boot-splash.sh:12:  out=\"$DIR/splash.raw\"\n/usr/lib/universe/gen-boot-splash.sh:31:  echo \"splash written\"",
+   "gen-boot-splash.sh writes it - line 12 builds splash.raw and line 31 confirms the write. The splash is generated, not shipped as a static file."),
+gf("Find where that error message comes from.", "not within file bounds", "/home", "*.py",
+   "/home/rm/tools/check-model.py:44:  raise SystemExit(\"tensor not within file bounds\")",
+   "It comes from /home/rm/tools/check-model.py line 44 - a model file check that aborts when the tensor table points past the end of the file. That usually means a truncated download."),
+gf("Is the polkit rule for our helpers in place?", "universe-privilege", "/etc/polkit-1/rules.d", "*.rules",
+   "/etc/polkit-1/rules.d/49-universe.rules:18:  if (action.id == \"org.universe.privilege\") {\n/etc/polkit-1/rules.d/49-universe.rules:22:  if (action.id == \"org.universe.approve\") {",
+   "Yes - 49-universe.rules has both entries: org.universe.privilege on line 18 and org.universe.approve on line 22. If a helper is missing here, pkexec refuses it silently."),
+gf("Which files mention the old control center?", "universe-control-center", "/usr/share", "",
+   "/usr/share/applications/universe-control-center.desktop:3: Name=Universe Control Center",
+   "Only one leftover: /usr/share/applications/universe-control-center.desktop. The app itself is gone; this desktop entry should be removed so it stops showing in the menu."),
+gf("Where is GTK_THEME set in the image?", "GTK_THEME", "/etc", "*.conf",
+   "/etc/environment:4: GTK_THEME=Universe-Live",
+   "In /etc/environment line 4: GTK_THEME=Universe-Live. That variable is the only thing that keeps libadwaita on our theme - without it the apps fall back to Adwaita-empty."),
+gf("Find every place the version string is written.", "v0.7.0", "/usr/lib/universe", "*.sh",
+   "/usr/lib/universe/build-iso-noroot.sh:22: VERSION=\"v0.7.0\"\n/usr/lib/universe/universe-fetch:9: VERSION=\"v0.7.0\"",
+   "Two places in that tree: build-iso-noroot.sh line 22 and universe-fetch line 9. Remember the version also lives in etc/os-release, etc/lsb-release, etc/issue, usr/lib/os-release, universe-monitor and universe-settings - keep them all in sync."),
+gf("Any TODO left in the settings app?", "TODO", "/usr/bin", "universe-*",
+   "/usr/bin/universe-settings:812:  # TODO: move the snapshot page to the rust app",
+   "One: universe-settings line 812, a note to move the snapshot page to the Rust app. Nothing user-visible."),
+fi("Is /usr/bin/pkexec setuid?", "/usr/bin/pkexec",
+   "path: /usr/bin/pkexec\ntype: regular file\nsize: 199928 bytes\nmode: -rwsr-xr-x\nowner: root:root\nmodified: 2026-08-14 10:22\nsha256: 5f2a9c...",
+   "Yes - the mode is -rwsr-xr-x, so the setuid bit is set and pkexec runs as root. That is mandatory: without it the privilege gate cannot work. The build verifies this exact mode."),
+fi("What are the permissions on the privilege rules file?", "/var/lib/universe/privilege/rules.json",
+   "path: /var/lib/universe/privilege/rules.json\ntype: regular file\nsize: 412 bytes\nmode: -rw-------\nowner: root:root\nmodified: 2026-09-21 19:04",
+   "0600 and owned by root:root - exactly as it should be. The rules store must never be readable or writable by the user, otherwise the gate can be edited around."),
+fi("What does /usr/bin/sudo point to?", "/usr/bin/sudo",
+   "path: /usr/bin/sudo\ntype: symlink\nsymlink target: /usr/bin/universe-privilege\nmode: lrwxrwxrwx\n",
+   "It is a symlink to /usr/bin/universe-privilege - that is the whole trick. sudo in Universe OS is the privilege gate, which classifies the command and asks for consent when needed."),
+fi("How big is the model file and is it intact?", "/usr/share/universe/models/universe-ai.gguf",
+   "path: /usr/share/universe/models/universe-ai.gguf\ntype: regular file\nsize: 2497280480 bytes (2.3 GiB)\nmode: -rw-r--r--\nmodified: 2026-09-20 11:02\nsha256: 85e4a5b7...",
+   "2.3 GiB (2497280480 bytes) and the hash is 85e4a5b7..., which matches the published base model. Size and hash agreeing means the file is complete."),
+fi("How many files are in the app directory?", "/opt/universe-ai",
+   "path: /opt/universe-ai\ntype: directory\nentries: 12\nmode: drwxr-xr-x\nowner: root:root\nmodified: 2026-09-21 08:15",
+   "12 entries. The app tree holds main.js, the renderer, mascot.js, the brain knowledge directory and the helper scripts - if the count drops, a file went missing in the last sync."),
+du_("The disk is full - where is it going?", "/", 12,
+   "Filesystem      Type  Size  Used Avail Use%\n/dev/nvme0n1p8  ext4   95G   91G  3.6G  97% /\n\nLargest entries under /:\n34G  /usr\n47G  /home\n3.1G /opt\n1.7G /var\n4.1G /swapfile-uai",
+   "The root filesystem is at 97 percent. /home holds 47G and /usr 34G; the swap file alone is 4.1G. The usual culprits here are build trees, old ISO images and cargo target directories - I can list the biggest files if you want to trim."),
+du_("What is using space in my home?", "/home/rm", 10,
+   "Largest entries under /home/rm:\n8.3G  Desktop/Univerce-OS\n2.7G  Desktop/Server-FullBackup-2026-09-15.tar.gz\n1.4G  pera-backups-all.tar.zst\n721M  .local/share/opencode/opencode.db\n265M  uai-build/llama.cpp",
+   "The OS project itself is 8.3G, then a 2.7G server backup and a 1.4G archive. Those two backups alone are 4.1G - if they are already stored elsewhere they are the easiest win."),
+du_("How much room is left before I build an ISO?", "", 6,
+   "Filesystem      Type  Size  Used Avail Use%\n/dev/nvme0n1p8  ext4   95G   91G  3.6G  97% /\n\nA fresh ISO needs about 1.83 GiB free after the old ISO is deleted.",
+   "3.6G free, and the build needs roughly 1.83G for the squashfs plus the ISO size itself. Delete the superseded ISO before starting - xorriso writes the new file alongside the old one and the pack fails at the very end if the old one is still there."),
+du_("Is /var/log getting out of hand?", "/var/log", 8,
+   "Largest entries under /var/log:\n412M  journal\n84M   syslog.1\n22M   kern.log.1\n8.0M  auth.log",
+   "The journal is 412M, the rest is small. Trim it with journalctl --vacuum-size=200M if you need the space - it is safe and keeps recent logs."),
+ss_("Is the AI service running?", "universe-ai",
+   "unit: universe-ai.service\nloaded: loaded (/etc/systemd/system/universe-ai.service; enabled)\nactive: active (running) since Tue 2026-09-23 08:12:04; 21min ago\nmain pid: 1843 (node)\nrecent log:\n  08:12:04 Started Universe AI desktop assistant\n  08:12:06 model loaded, listening on 127.0.0.1:17843",
+   "It is active and running since 08:12, PID 1843, and enabled at boot. The model loaded in two seconds and it is listening on the loopback port - everything is healthy."),
+ss_("Why did the splash service fail?", "universe-splash",
+   "unit: universe-splash.service\nloaded: loaded (/etc/systemd/system/universe-splash.service; enabled)\nactive: failed (Result: exit-code) since Tue 2026-09-23 08:11:58\nrecent log:\n  08:11:58 uni-fb-splash: /dev/fb0 unsupported bpp 24\n  08:11:58 universe-splash.service: Main process exited, code=exited, status=1/FAILURE",
+   "It failed because uni-fb-splash reported an unsupported 24-bit framebuffer. The current version handles 16, 24 and 32 bpp, so an image built before that fix is still on disk - rebuild the rootfs and the error disappears."),
+ss_("Is the firewall enabled at boot?", "ufw",
+   "unit: ufw.service\nloaded: loaded (/lib/systemd/system/ufw.service; enabled)\nactive: active (exited) since Tue 2026-09-23 08:11:40\nrecent log:\n  08:11:40 Firewall not enabled (skipping reload)",
+   "The unit is active and enabled, but the log line says the firewall itself was not enabled - that means the ruleset is empty. Run ufw status to confirm, then ufw enable if you want it enforcing."),
+ni("What is my IP address and what is listening?",
+   "interfaces:\n  wlan0  10.206.39.249/24  (default via 10.206.39.69)\n  lo     127.0.0.1/8\nlistening:\n  tcp  127.0.0.1:17843  node (universe-ai)\n  tcp  127.0.0.1:11434  ollama\n  tcp  0.0.0.0:22       sshd\ndns: 127.0.0.1 (unbound)\nconnectivity: ok (ping 1.1.1.1 in 21ms)",
+   "wlan0 has 10.206.39.249 with the default route through 10.206.39.69. Locally, the AI listens on 17843 and ollama on 11434, both loopback-only; SSH is the only service open to the network. DNS resolves through the local unbound, and connectivity is fine."),
+ni("The internet seems down - what is going on?",
+   "interfaces:\n  wlan0  10.206.39.249/24  (no default route)\n  lo     127.0.0.1/8\nlistening:\n  tcp  127.0.0.1:17843  node\ndns: 127.0.0.1 (unbound)\nconnectivity: failed (no route to host)",
+   "There is no default route on wlan0 - the interface has an address but nothing tells the kernel where to send outside traffic. Reconnect the network (or add the gateway back) and it will resolve; DNS itself is local and fine."),
+ni("Which process is on port 17843?",
+   "listening:\n  tcp  127.0.0.1:17843  node (pid 1843, universe-ai.service)",
+   "It is the Universe AI service itself: node, PID 1843, started by universe-ai.service. Nothing else is bound to that port."),
+pi("Is ffmpeg installed?", "ffmpeg", "installed",
+   "ffmpeg 7:6.1.1-3ubuntu5  installed",
+   "Yes - version 7:6.1.1-3ubuntu5 is installed. If a script fails with command not found for a different tool, run the same check for that name."),
+pi("What version of node is available?", "nodejs", "info",
+   "nodejs:\n  Installed: 22.14.0-1nodesource1\n  Candidate: 22.14.0-1nodesource1\n  Provides: node, npm\n  Homepage: https://nodejs.org",
+   "22.14.0 is installed and it is the newest candidate, so nothing to upgrade. It also provides the node and npm names."),
+pi("Which package owns /usr/bin/universe-privilege?", "universe-privilege", "files",
+   "universe-privilege is a local file, not owned by a dpkg package.\n  dpkg -S /usr/bin/universe-privilege -> no path found",
+   "Nothing owns it - it is part of the image itself, deployed from scripts/rootfs/, not from a package. That is normal for every universe-* binary."),
+pi("Search for a screenshot tool.", "screenshot", "search",
+   "gnome-screenshot - utility to take pictures of your screen\nflameshot - Powerful yet simple to use screenshot software\nscrot - command-line screen capture utility",
+   "Three options: gnome-screenshot (the GNOME one, already the default keybinding), flameshot (annotation built in) and scrot (scriptable). For the desktop keys you want gnome-screenshot; for scripts, scrot."),
+]
+TRAJ.extend(TRAJ_V5)
 
 def main():
     rows = []

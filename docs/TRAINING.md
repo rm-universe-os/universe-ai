@@ -43,8 +43,9 @@ Every example is a JSONL line with `system / user / assistant` messages.
 | Linux command encyclopedia | 300+ | practical answers for ls, find, grep, systemd, permissions, ssh, archives, cron, networking, packages, pipes, storage (LUKS, LVM, RAID, SMART), containers, DevOps tooling — standard commands first, Universe apps as a convenience |
 | Debugging & troubleshooting | 120+ | broken boot, full disk, high load, no network, DNS, permission errors, service failures, Wi-Fi drops, suspend/resume, GPU drivers, audio stacks, containers, dual-boot clocks — symptom → diagnosis path → fix |
 | Universe OS knowledge | 180+ | every universe-* app, the privilege gate, the four modes, BTRFS + snapshots, the build pipeline, security model (v0.7.0), plus an engineering appendix of proven traps and verification methods |
-| Multilingual | 62 languages | the same core questions answered in 61 languages plus English — European (incl. Nordic, Baltic, Balkan, Celtic-adjacent), Middle-Eastern, South and South-East Asian, Central Asian, African and more |
-| Tool calling | 170+ trajectories ×3 oversample | complete tool-call traces (call → tool result → final answer) for all twelve tools, including multi-step chains (diagnose → read → fix → verify), rendered with the real chat template so the model learns the exact `<tool_call>` format the runtime uses |
+| The OS project tree | ~600 | file-level knowledge generated from the live project: a row for every source, script, config, unit and stylesheet, directory inventories, and the subsystem notes (boot chain, GRUB metrics, privilege gate, glass, installer, build pipeline, verification tools) |
+| Multilingual | 110 languages | the same core questions answered in 109 languages plus English — European (incl. Nordic, Baltic, Balkan, Celtic-adjacent), Middle-Eastern, South and South-East Asian, Central Asian, African, Pacific and more |
+| Tool calling | 200+ trajectories ×3 oversample | complete tool-call traces (call → tool result → final answer) for all eighteen tools, including multi-step chains (diagnose → read → fix → verify), rendered with the real chat template so the model learns the exact `<tool_call>` format the runtime uses |
 | Security refusals | ~20 | printing SSH keys, malware, prompt injection → correct refusals |
 
 A fixed system prompt sits on top of most examples encoding the permanent rules:

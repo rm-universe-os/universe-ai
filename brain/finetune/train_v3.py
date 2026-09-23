@@ -24,9 +24,9 @@ BLOB = os.environ.get("UAI_BASE_BLOB") or os.path.expanduser(
     "~/.ollama/models/blobs/sha256-85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9")
 GGUF_DIR = "/tmp/opencode/gguf-work"
 GGUF = os.path.join(GGUF_DIR, "universe-ai.gguf")
-DATA = os.path.join(HERE, "..", "knowledge", "dataset-v3-full.jsonl")
-TOOLS_DATA = os.path.join(HERE, "..", "knowledge", "dataset-v3-tools.jsonl")
-OUT = os.path.join(HERE, "out-v3")
+DATA = os.environ.get("UAI_DATA") or os.path.join(HERE, "..", "knowledge", "dataset-v3-full.jsonl")
+TOOLS_DATA = os.environ.get("UAI_TOOLS_DATA") or os.path.join(HERE, "..", "knowledge", "dataset-v3-tools.jsonl")
+OUT = os.environ.get("UAI_OUT") or os.path.join(HERE, "out-v3")
 REPO = "Qwen/Qwen3-4B-Instruct-2507"
 TOOL_OVERSAMPLE = 3
 

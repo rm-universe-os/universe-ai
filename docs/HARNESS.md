@@ -47,6 +47,12 @@ refused outright.
 | `search_files` | Finds files by name pattern under a directory (like `find -iname`; auto-wildcards, depth and result caps) | Read-only |
 | `journal_logs` | Reads recent systemd journal entries, optionally filtered by unit and priority | Read-only |
 | `process_list` | Top processes by CPU or memory | Read-only |
+| `grep_files` | Searches inside files (like `grep -rn`, glob filter, noise directories skipped) | Read-only |
+| `file_info` | One path in detail: type, size, mode, owner, timestamps, symlink target, sha256 (≤ 64 MB), directory entry count | Read-only |
+| `disk_usage` | `df -hT` plus the largest entries under a directory | Read-only |
+| `service_status` | systemd unit state: active, enabled, main PID, recent journal lines | Read-only |
+| `network_info` | Interfaces and addresses, default route, listening sockets, DNS servers, connectivity check | Read-only |
+| `package_info` | Package queries: search, info, file list, installed version (dpkg/apt-cache) | Read-only |
 | `os_knowledge` | Searches the deep Universe OS knowledge base (system part + engineering appendix: traps, verification, playbooks) and returns the best-matching sections | Read-only |
 
 Every tool call appears in the chat as a collapsible block — the exact command, the
@@ -74,13 +80,18 @@ A frameless deep-space window: nebula backdrop that re-lights with the desktop m
 
 - **Messages** — user lines with `❯`, answers with `●`; answers stream in with a blinking
   cursor; hover any answer for a copy button.
+- **Markdown answers** — headings, lists, quotes, links, inline code and fenced code
+  blocks with a language label and a per-block copy button. Streaming stays plain text
+  and the finished answer is rendered, so long replies never stutter.
+- **Stop button** — while the agent works the send arrow becomes a stop square
+  (or Ctrl+.), which aborts the running model call and leaves the conversation usable.
 - **Tool blocks** — collapsible, with the command in the header and scrollable output.
 - **Approval cards** — the exact command plus Approve / Deny, and a verdict line after.
 - **Web results** — search hits render as title / domain / snippet cards that open in the
   browser.
 - **Empty state** — a short welcome and three suggestion chips to start from.
 - **Status footer** — `thinking…`, `start model ▸`, `done`; `AGENT` chip lights while busy.
-- **Keyboard** — Enter sends, Shift+Enter newline, Esc closes, Ctrl+U clears.
+- **Keyboard** — Enter sends, Shift+Enter newline, Esc closes, Ctrl+U clears, Ctrl+. stops.
 
 ## Centralized history
 

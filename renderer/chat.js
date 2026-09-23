@@ -10,6 +10,7 @@ const statusText = document.getElementById("status-text");
 const agentEl = document.getElementById("agent");
 const orbEl = document.getElementById("state-orb");
 const inputEl = document.getElementById("input");
+const btnStop = document.getElementById("btn-stop");
 
 function scrollDown() {
     scrollEl.scrollTop = scrollEl.scrollHeight
@@ -164,6 +165,102 @@ const CHAT_PALETTES = {
     requestAnimationFrame(tick)
 })();
 
+function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    } [c]))
+}
+
+function inlineFmt(s) {
+    let t = escapeHtml(s);
+    t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+    t = t.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, "$1<i>$2</i>");
+    t = t.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    return t
+}
+
+function renderMarkdown(src) {
+    const lines = String(src || "").replace(/\r\n/g, "\n").split("\n");
+    const out = [];
+    let inCode = false,
+        codeLang = "",
+        codeBuf = [],
+        listBuf = [],
+        listType = "";
+    const flushList = () => {
+        if (listBuf.length) {
+            out.push("<" + listType + ">" + listBuf.map(x => "<li>" + x + "</li>").join("") + "</" + listType + ">");
+            listBuf = [];
+            listType = ""
+        }
+    };
+    const flushCode = () => {
+        if (codeBuf.length || codeLang) {
+            const code = escapeHtml(codeBuf.join("\n"));
+            const id = "c" + Math.random().toString(36).slice(2, 9);
+            out.push('<div class="code"><div class="code-head"><span class="code-lang">' + escapeHtml(codeLang || "code") + '</span><button class="code-copy" data-code="' + id + '" title="Copy">copy</button></div><pre id="' + id + '">' + code + "</pre></div>")
+        }
+        codeBuf = [];
+        codeLang = ""
+    };
+    for (const raw of lines) {
+        const fence = raw.match(/^\s*```([\w+#.-]*)\s*$/);
+        if (fence) {
+            if (inCode) {
+                inCode = false;
+                flushCode()
+            } else {
+                flushList();
+                inCode = true;
+                codeLang = fence[1] || ""
+            }
+            continue
+        }
+        if (inCode) {
+            codeBuf.push(raw);
+            continue
+        }
+        const li = raw.match(/^\s*[-*\u2022]\s+(.+)$/);
+        const oli = raw.match(/^\s*\d+[.)]\s+(.+)$/);
+        if (li || oli) {
+            const type = li ? "ul" : "ol";
+            if (listType && listType !== type) flushList();
+            listType = type;
+            listBuf.push(inlineFmt(li ? li[1] : oli[1]));
+            continue
+        }
+        flushList();
+        if (!raw.trim()) {
+            out.push('<div class="sp"></div>');
+            continue
+        }
+        const h = raw.match(/^#{1,6}\s+(.+)$/);
+        if (h) {
+            out.push("<h4>" + inlineFmt(h[1]) + "</h4>");
+            continue
+        }
+        const q = raw.match(/^&gt;\s?(.+)$/) || raw.match(/^>\s?(.+)$/);
+        if (q) {
+            out.push("<blockquote>" + inlineFmt(q[1]) + "</blockquote>");
+            continue
+        }
+        if (/^\s*([-*_])\1{2,}\s*$/.test(raw)) {
+            out.push("<hr>");
+            continue
+        }
+        out.push("<p>" + inlineFmt(raw) + "</p>")
+    }
+    if (inCode) flushCode();
+    flushList();
+    return out.join("")
+}
+
 function attachCopy(div, getText) {
     const b = document.createElement("button");
     b.className = "copy";
@@ -191,8 +288,13 @@ function addLine(cls, prefix, text) {
         p.textContent = prefix;
         div.appendChild(p)
     }
-    div.appendChild(document.createTextNode(text));
-    if (cls === "assistant") attachCopy(div, () => text);
+    if (cls === "assistant") {
+        const body = document.createElement("div");
+        body.className = "body";
+        body.innerHTML = renderMarkdown(text);
+        div.appendChild(body);
+        attachCopy(div, () => text)
+    } else div.appendChild(document.createTextNode(text));
     logEl.appendChild(div);
     scrollDown();
     return div
@@ -224,7 +326,14 @@ function endStream() {
     if (cursor) cursor.remove();
     cursor = null;
     if (streamLine && !streamNode.textContent.trim()) streamLine.remove();
-    else if (streamLine) attachCopy(streamLine, () => streamNode.textContent);
+    else if (streamLine) {
+        const raw = streamNode.textContent;
+        const body = document.createElement("div");
+        body.className = "body";
+        body.innerHTML = renderMarkdown(raw);
+        streamLine.replaceChild(body, streamNode);
+        attachCopy(streamLine, () => raw)
+    }
     streamLine = null;
     streamNode = null
 }
@@ -565,6 +674,8 @@ ipcRenderer.on("chat-state", (e, m) => {
     agentEl.classList.toggle("busy", s !== "idle");
     orbEl.dataset.state = s;
     orbEl.title = s;
+    btnStop.classList.toggle("hidden", s === "idle");
+    btnSend.classList.toggle("hidden", s !== "idle");
     const map = {
         idle: null,
         listening: "listening\u2026",
@@ -764,9 +875,25 @@ inputEl.addEventListener("focus", phVis);
 inputEl.addEventListener("blur", phVis);
 document.getElementById("btn-clear").addEventListener("click", () => ipcRenderer.send("chat-clear"));
 document.getElementById("btn-close").addEventListener("click", () => ipcRenderer.send("chat-close"));
+btnStop.addEventListener("click", () => ipcRenderer.send("chat-abort"));
+document.addEventListener("click", e => {
+    const b = e.target && e.target.closest ? e.target.closest(".code-copy") : null;
+    if (!b) return;
+    const pre = document.getElementById(b.dataset.code);
+    if (!pre) return;
+    try {
+        clipboard.writeText(pre.textContent);
+        b.textContent = "copied";
+        setTimeout(() => b.textContent = "copy", 1100)
+    } catch (_) {}
+});
 btnSend.addEventListener("click", send);
 window.addEventListener("keydown", e => {
     if (e.key === "Escape") ipcRenderer.send("chat-close");
+    if (e.key === "." && e.ctrlKey) {
+        e.preventDefault();
+        ipcRenderer.send("chat-abort")
+    }
     if (e.key === "u" && e.ctrlKey) {
         e.preventDefault();
         ipcRenderer.send("chat-clear")

@@ -418,3 +418,35 @@ these are verified facts from the build machine.
   nmcli with stdin keyfiles (0600).
 - **dmesg empty for users** → by design (`dmesg_restrict=1`); use
   `journalctl -k`.
+
+## The project tree (where everything lives)
+
+- `scripts/rootfs/` — the single source of truth for everything added to the base
+  system: `boot/grub/themes/universe/` (generated theme), `etc/` (dconf db,
+  polkit rules, systemd units), `opt/universe-ai/` (the AI app as shipped),
+  `usr/bin/` (the universe-* apps and the pkexec helpers), `usr/lib/universe/`
+  (helper scripts, install-disk.sh), `usr/share/` (themes, wallpapers, icons).
+- `scripts/` — the build and generation pipeline: `build-iso-noroot.sh` (the
+  current ISO build), `sync-rootfs-to-chroot.sh` (deploy to the chroot),
+  `grub_theme_metrics.py` (theme geometry, single source of truth),
+  `gen-grub-theme.py`, `gen-mode-themes.py`, `gen-mode-wallpapers.py`,
+  `build-shell-theme.py`, `gen-boot-splash.sh`, `gen-panel-mark.py`,
+  `gen-chrome-theme.py`, `restore-legacy-app-icons.py`, `src/uni-fb-splash.c`
+  (the frame-buffer splash painter) and the older numbered build scripts.
+- `build/` — staging: `chroot-kali/` (the chroot), `image/` (the ISO tree,
+  rebuilt every time), `scratch/` (must exist), `testtools/` (the checkers:
+  app-icon-check.py, css-parse-check.sh, glass-*-check.py,
+  gtk-window-ground-check.py), `grubdbg/`, `verify/`, `screenshots/`.
+- `rust/` — the Rust components being moved into the system: installer,
+  privilege, monitor, firewall, cleaner, network, security, ui, mode-selector.
+- `universe-settings/` — the Rust rewrite of the settings app (in development,
+  not yet in the ISO).
+- `gnome-apps/` — the Python drafts of the GNOME apps before they land in the
+  rootfs.
+- Root documents: `Universe-OS-HANDOFF.md` (what the system is, how it is
+  built, the folder map, the traps), `Universe-OS-transcript.md` (the detailed
+  knowledge base and raw session transcript), `audits/` (security and UX
+  reports), `assets/` and `logo/` (raw art), `plymouth-build/` (the old frame
+  generator, superseded).
+- Build order: `sync-rootfs-to-chroot.sh` (with sudo) → `build-iso-noroot.sh`
+  (as the normal user, never root) → verify with the testtools and a QEMU boot.
