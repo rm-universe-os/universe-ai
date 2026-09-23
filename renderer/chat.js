@@ -11,10 +11,23 @@ const agentEl = document.getElementById("agent");
 const orbEl = document.getElementById("state-orb");
 const inputEl = document.getElementById("input");
 const btnStop = document.getElementById("btn-stop");
+const jumpEl = document.getElementById("jump-bottom");
 
-function scrollDown() {
-    scrollEl.scrollTop = scrollEl.scrollHeight
+let autoScroll = true;
+function scrollDown(force) {
+    if (autoScroll || force) scrollEl.scrollTop = scrollEl.scrollHeight;
+    else jumpEl.classList.remove("hidden")
 }
+scrollEl.addEventListener("scroll", () => {
+    const nearBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 70;
+    autoScroll = nearBottom;
+    if (nearBottom) jumpEl.classList.add("hidden")
+});
+jumpEl.addEventListener("click", () => {
+    autoScroll = true;
+    jumpEl.classList.add("hidden");
+    scrollEl.scrollTop = scrollEl.scrollHeight
+});
 const CHAT_PALETTES = {
     developer: {
         nebula: ["120, 92, 255", "76, 58, 200", "150, 100, 255"],
@@ -462,6 +475,8 @@ function markNewActivity() {
 
 function clearLog() {
     logEl.innerHTML = "";
+    autoScroll = true;
+    jumpEl.classList.add("hidden");;
     tools.clear();
     endStream();
     if (newActBtn) newActBtn.classList.add("hidden")

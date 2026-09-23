@@ -2031,7 +2031,8 @@ function tryExec(cmd, args, timeout) {
         return execFileSync(cmd, args, {
             encoding: "utf8",
             timeout: timeout || 15e3,
-            maxBuffer: 4e6
+            maxBuffer: 4e6,
+            stdio: ["ignore", "pipe", "ignore"]
         })
     } catch (e) {
         return e && e.stdout ? String(e.stdout) : ""
@@ -3571,7 +3572,7 @@ async function setupPipeline() {
             break
         }
         i++;
-        if (i > 9) break
+        if (i > 29) break
     }
     if (!parts.length) parts.push(base);
     let archive;

@@ -772,3 +772,19 @@ html, body {
 #inputrow:focus-within #btn-send { box-shadow: 0 0 12px rgba(103, 232, 249, 0.25); }
 #btn-stop.hidden { display: none; }
 #btn-send.hidden { display: none; }
+#jump-bottom {
+  position: absolute;
+  right: 14px;
+  bottom: 118px;
+  width: 26px; height: 26px;
+  font: inherit; font-size: 11px;
+  color: var(--cyan);
+  background: rgba(9, 12, 28, 0.85);
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 6;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+#jump-bottom:hover { box-shadow: 0 0 14px rgba(103, 232, 249, 0.4); transform: translateY(-1px); }
+#jump-bottom.hidden { display: none; }

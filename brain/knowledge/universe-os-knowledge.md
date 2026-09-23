@@ -87,26 +87,28 @@ say what you know and use your tools or web search for the rest.
    matte↔glass slider), Network (Wi-Fi scan/connect via nmcli; password via
    stdin, never argv), Security (UFW switch + rules, AppArmor modes, Flatpak
    harden), Storage (cleanup), Snapshots (BTRFS + snapper), System (info,
-   root-account toggle), Privilege (opens the Access Control Center).
+   root-account toggle), Privilege (the gate state and the rules store).
 2. **universe-security** — Dashboard (three status cards + "Apply secure
    defaults" one-click zero-trust baseline), Firewall (UFW policies + rules,
    including port ranges like `8000:8100`), AppArmor (per-profile
    enforce/complain, bulk Medium/High), Sandbox (one-click Flatpak hardening +
    reset).
-3. **universe-privilege** — the privilege gate. **This binary IS `sudo`**:
-   `/usr/bin/sudo` is a symlink to it. Every root request opens a GUI consent
-   dialog ("App X requests Category Y"; dangerous commands highlighted in red;
-   grant duration: just-once / this-session / 5m / 30m / 1h; auto-deny after 45 s;
-   no display = deny). The **Access Control Center**
-   (`universe-privilege center`) adds App Rules, 8 permission categories
-   (Network Control, Software Install, System Settings, User Accounts, File
-   Access, Security & Firewall, Services & Daemons, and **Dangerous Operations —
-   never auto-allowed**), Security Modes (**Lockdown = deny everything for 60
-   minutes**), Timed Grants, an **Audit Log**
-   (`~/.config/universe/privilege-audit.log`, JSON export, ring buffer) and a
-   **Panic button** that revokes all rules instantly. Execution happens through a
-   single-use job file plus the setuid `gate-exec` helper; sudoers allows exactly
-   one command: `universe ALL=(root) NOPASSWD: /usr/lib/universe/gate-exec`.
+3. **universe-privilege** — the privilege gate and the `sudo` replacement:
+   `/usr/bin/sudo` is a symlink to it. It classifies every root request into one
+   of the permission categories (Network Control, Software Install, System
+   Settings, User Accounts, File Access, Security & Firewall, Services &
+   Daemons, and **Dangerous Operations — never auto-allowed**) and deposits a
+   single-use job. **Since v0.7.0 the decision is made on the ROOT side**:
+   `universe-approve` (shipped in `usr/lib/universe-core/`, launched through
+   pkexec) owns the consent dialog and the rules store
+   `/var/lib/universe/privilege/rules.json` — owned by root, mode 0600 — and the
+   setuid `gate-exec` helper executes each approved job exactly once from
+   `/var/lib/universe/approved`, deleting the token before running it. sudoers
+   allows exactly one command: `universe ALL=(root) NOPASSWD:
+   /usr/lib/universe/gate-exec`. The user-side audit log is
+   `~/.config/universe/privilege-audit.log`; the root side writes
+   `/var/log/universe-privilege.log`. A request that arrives without a display
+   is denied by design, and pkexec refuses when the session is not active.
 4. **universe-monitor** — Overview (CPU/RAM bars with history), Processes
    (search), Disks. One-second refresh.
 5. **universe-cleaner** — reclaims thumbnails, pip cache, app caches, trash,
