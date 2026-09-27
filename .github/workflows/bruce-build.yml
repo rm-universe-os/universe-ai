@@ -1,0 +1,47 @@
+name: Bruce Build
+
+on:
+  push:
+    branches:
+      - bruce-build-tmp
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout build files
+        uses: actions/checkout@v4
+
+      - name: Checkout Bruce firmware
+        uses: actions/checkout@v4
+        with:
+          repository: BruceDevices/Firmware
+          ref: a59213f3ec6cd302fa32c2042b2700c9c24d991a
+          path: fw
+
+      - name: Apply board configuration
+        run: |
+          cp .bruce-build/ESP-General.ini fw/boards/ESP-General/ESP-General.ini
+          cp .bruce-build/interface.cpp fw/boards/ESP-General/interface.cpp
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install platformio
+
+      - name: Build firmware
+        run: |
+          cd fw
+          platformio run -e esp32-s3-devkitc-1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruce-s3-ili9341
+          path: fw/Bruce-*.*
+          retention-days: 1
+          if-no-files-found: error
