@@ -90,7 +90,7 @@ rm 7213 12.4 3.2 chrome""", "ffmpeg is using 92% of one core - probably a runnin
     rc("is my firewall on?", "sudo ufw status", "Status: active\n\nTo                         Action      From\n--                         ------      ----\n22/tcp                     ALLOW       Anywhere", "Yes, UFW is active with one rule: SSH (22/tcp) allowed from anywhere. Everything else incoming is denied by default."),
     rc("check the status of the ollama service", "systemctl status ollama --no-pager", "● ollama.service - Ollama Service\n     Loaded: loaded (/etc/systemd/system/ollama.service; enabled)\n     Active: active (running) since Tue 2026-09-22 09:12:04 EDT\n   Main PID: 2311 (ollama)", "The ollama service is active and running since 09:12 today. Everything looks healthy."),
     rc("what kernel am I running?", "uname -r", "7.2.0-070200-generic", "You are running kernel 7.2.0-070200-generic."),
-    rc("find files bigger than 500MB on my system", "find /home -xdev -type f -size +500M 2>/dev/null", "/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.0).iso\n/home/rm/uai-venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so", "Two files over 500 MB in your home: the Universe OS v0.7.0 ISO (about 2.1 GB) and PyTorch's CUDA library. Both are expected."),
+    rc("find files bigger than 500MB on my system", "find /home -xdev -type f -size +500M 2>/dev/null", "/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.1).iso\n/home/rm/uai-venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so", "Two files over 500 MB in your home: the Universe OS v0.7.1 ISO (about 2.1 GB) and PyTorch's CUDA library. Both are expected."),
     rc("what are the biggest directories in /var?", "du -xsh /var/* 2>/dev/null | sort -h | tail -6", "512M /var/lib/flatpak\n1.2G /var/log\n2.4G /var/cache\n3.1G /var/lib/snapd", "The heaviest are /var/lib/snapd (3.1 GB), /var/cache (2.4 GB) and /var/log (1.2 GB). Cleaning the APT cache and old snap revisions would free several GB."),
     rc("how long has this machine been up?", "uptime -p", "up 3 days, 7 hours, 42 minutes", "The machine has been up for 3 days, 7 hours and 42 minutes."),
     rc("what's my IP address?", "ip -br a | grep -v LOOPBACK", "wlan0  UP  192.168.1.42/24\nvirbr0 DOWN 192.168.122.1/24", "Your Wi-Fi interface (wlan0) has 192.168.1.42/24. The virbr0 bridge is down - normal unless you run VMs."),
@@ -113,19 +113,19 @@ rm 7213 12.4 3.2 chrome""", "ffmpeg is using 92% of one core - probably a runnin
     rc("check if /etc/fstab has errors", "findmnt --verify 2>&1 | tail -3", "0 parse errors, 0 errors, 1 warning\n/etc/fstab: btrfs subvolumes are not verified", "fstab parses cleanly - 0 errors, just one harmless warning about BTRFS subvolumes."),
     rc("how many packages are installed?", "dpkg -l | grep -c '^ii'", "2847", "You have 2,847 installed packages."),
 
-    rf("read my /etc/os-release", "/etc/os-release", "NAME=\"Universe OS\"\nVERSION=\"v0.7.0 (Ubuntu 24.04.4 LTS)\"\nID=universe-os\nID_LIKE=debian", "You are on Universe OS v0.7.0 (built on Ubuntu 24.04.4 LTS)."),
+    rf("read my /etc/os-release", "/etc/os-release", "NAME=\"Universe OS\"\nVERSION=\"v0.7.1 (Ubuntu 24.04.4 LTS)\"\nID=universe-os\nID_LIKE=debian", "You are on Universe OS v0.7.1 (built on Ubuntu 24.04.4 LTS)."),
     rf("show me my shell config", "~/.zshrc", "# zsh config\nexport EDITOR=nano\nalias ll='ls -lah'\nalias gs='git status'", "Your ~/.zshrc is small and tidy: editor set to nano, plus ll and gs aliases. Nothing unusual."),
     rf("read the script I wrote yesterday", "~/universe-workspace/backup.sh", "#!/bin/bash\nset -euo pipefail\ntar -czf ~/backups/home-$(date +%F).tar.gz ~/Documents", "It is a backup script: it tars ~/Documents into ~/backups/home-<date>.tar.gz with strict error handling (set -euo pipefail). Looks correct."),
     rf("what is in /etc/fstab?", "/etc/fstab", "UUID=abcd-1234 / btrfs subvol=@ 0 1\nUUID=abcd-1234 /home btrfs subvol=@home 0 2\n/swapfile none swap sw 0 0", "fstab mounts the BTRFS root subvolume @, /home as @home, and a swapfile. Clean and standard for Universe OS."),
     rf("check the config file of the app", "~/projects/app/config.json", "{\n  \"port\": 8080,\n  \"debug\": false,\n  \"db\": \"postgres://localhost/app\"\n}", "The app config sets port 8080, debug off, and a local Postgres database."),
 
     ld("what's in my home directory?", "~", "d 4096  Desktop/\nd 4096  Documents/\nd 4096  Downloads/\n- 2201  notes.md\nd 4096  projects/", "Your home has the usual Desktop, Documents, Downloads and projects folders plus a notes.md file."),
-    ld("list the files in Downloads", "~/Downloads", "- 15M   universe-ai-model.tar.zst\n- 2.1G  Universe-OS-beta(v0.7.0).iso\n- 890K  report.pdf", "Downloads has three items: the model archive (15 MB), the Universe OS v0.7.0 ISO (2.1 GB) and a PDF report."),
+    ld("list the files in Downloads", "~/Downloads", "- 15M   universe-ai-model.tar.zst\n- 2.1G  Universe-OS-beta(v0.7.1).iso\n- 890K  report.pdf", "Downloads has three items: the model archive (15 MB), the Universe OS v0.7.1 ISO (2.1 GB) and a PDF report."),
     ld("what configs are in /etc/nginx?", "/etc/nginx", "d 4096  sites-enabled/\nd 4096  sites-available/\n- 1440  nginx.conf\n- 687   mime.types", "The nginx layout is standard: nginx.conf, mime.types and the sites-enabled / sites-available directories."),
     ld("show me what's in /var/log", "/var/log", "- 2.1M  syslog\n- 890K  auth.log\n- 12K   dpkg.log\nd 4096  journal/", "Logs are present and small: syslog 2.1 MB, auth.log 890 KB, dpkg.log 12 KB, plus the systemd journal directory."),
 
-    si("give me a full system overview", "OS: Universe OS v0.7.0 (Ubuntu 24.04.4 LTS)\nKernel: 7.2.0-070200-generic\nHost: universe\nUptime: 3d 7h 42m\nCPU: Intel(R) Core(TM) Ultra 9 275HX (24 threads)\nLoad (1/5/15m): 0.42 / 0.55 / 0.61\nMemory: 11.2 used / 30.0 GB (19.0 available)\nDisk /: 62 used / 95 GB (29 free)\nNetwork: wlan0 192.168.1.42\nGPU: NVIDIA GeForce RTX 5070 Ti, 9 %, 4096 MiB, 12227 MiB, 47 C", "Here is the summary: Universe OS v0.7.0 on kernel 7.2.0, up 3 days. Load is light (0.42). 19 GB RAM available of 30. Root disk 69% used. Wi-Fi at 192.168.1.42. The RTX 5070 Ti is idle at 47°C."),
-    si("how is my machine doing?", "OS: Universe OS v0.7.0\nKernel: 7.2.0-070200-generic\nUptime: 1d 2h 10m\nCPU: Intel(R) Core(TM) Ultra 9 275HX (24 threads)\nLoad (1/5/15m): 0.10 / 0.20 / 0.15\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)\nBattery: 92% (Discharging)", "Everything is comfortable: light load (0.10), 25 GB RAM free, 65 GB disk free, battery at 92%. No pressure anywhere."),
+    si("give me a full system overview", "OS: Universe OS v0.7.1 (Ubuntu 24.04.4 LTS)\nKernel: 7.2.0-070200-generic\nHost: universe\nUptime: 3d 7h 42m\nCPU: Intel(R) Core(TM) Ultra 9 275HX (24 threads)\nLoad (1/5/15m): 0.42 / 0.55 / 0.61\nMemory: 11.2 used / 30.0 GB (19.0 available)\nDisk /: 62 used / 95 GB (29 free)\nNetwork: wlan0 192.168.1.42\nGPU: NVIDIA GeForce RTX 5070 Ti, 9 %, 4096 MiB, 12227 MiB, 47 C", "Here is the summary: Universe OS v0.7.1 on kernel 7.2.0, up 3 days. Load is light (0.42). 19 GB RAM available of 30. Root disk 69% used. Wi-Fi at 192.168.1.42. The RTX 5070 Ti is idle at 47°C."),
+    si("how is my machine doing?", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nUptime: 1d 2h 10m\nCPU: Intel(R) Core(TM) Ultra 9 275HX (24 threads)\nLoad (1/5/15m): 0.10 / 0.20 / 0.15\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)\nBattery: 92% (Discharging)", "Everything is comfortable: light load (0.10), 25 GB RAM free, 65 GB disk free, battery at 92%. No pressure anywhere."),
 
     ws("what is the latest mainline Linux kernel version?", "web_search: latest mainline Linux kernel version", "1. kernel.org - The Linux Kernel Archives\n   https://kernel.org\n   Latest mainline: 7.3-rc2 released 2026-09-21...\n2. Phoronix - Linux 7.3 features\n   https://phoronix.com\n   Merge window closed...", "The latest mainline release is 7.3-rc2 (September 21, 2026), according to kernel.org. Stable series are still on 7.2.x."),
     ws("search the web for Qwen3-4B-Instruct benchmarks", "web_search: Qwen3-4B-Instruct benchmarks tool calling", "1. Qwen Blog - Qwen3-4B-Instruct-2507\n   https://qwenlm.github.io\n   Leads BFCL v4 tool-calling among open 4B models...\n2. Hugging Face - model card\n   https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507\n   Apache-2.0...", "The search confirms Qwen3-4B-Instruct-2507 leads tool-calling benchmarks (BFCL v4) among open 4B models, under Apache-2.0."),
@@ -151,13 +151,19 @@ rm 7213 12.4 3.2 chrome""", "ffmpeg is using 92% of one core - probably a runnin
     ("what is my public IP?", [("run_command", {"command": "curl -s ifconfig.me"}, "203.0.113.42")], "Your public IP is 203.0.113.42."),
     ("find out which service is failing at boot", [("run_command", {"command": "systemctl --failed --no-pager"}, "UNIT LOAD ACTIVE SUB DESCRIPTION\n● bluetooth.service loaded failed failed Bluetooth service"), ("run_command", {"command": "journalctl -u bluetooth -b -n 10 --no-pager"}, "bluetoothd[1201]: Failed to set mode: Blocked through rfkill (0x12)")], "One unit failed: bluetooth.service. The log shows the controller is blocked through rfkill - run 'rfkill unblock bluetooth' (needs approval) and restart the service."),
 
+    rc("بررسی کن چقدر فضای دیسک دارم", "df -hT", DF_OUT, "روت فایل‌سیستم (/) ۶۹٪ پر است - ۲۹ گیگابایت از ۹۵ گیگابایت آزاد است. فلش هم ۶ گیگابایت فضا دارد.", "fa"),
+    rc("چک کن چه پروسه‌هایی بیشترین CPU را مصرف می‌کنند", "ps aux --sort=-%cpu | head -6", "USER PID %CPU %MEM COMMAND\nrm 8830 92.1 3.0 ffmpeg\nrm 7213 12.4 3.2 chrome", "ffmpeg با ۹۲٪ یک هسته را درگیر کرده - احتمالاً یک انکود در حال اجراست. بعد از آن Chrome با ۱۲٪ قرار دارد.", "fa"),
+    rc("پورت ۸۰۸۰ آزاد است؟", "ss -tlnp | grep :8080", "LISTEN 0 511 0.0.0.0:8080 users:((\"node\",pid=9001,fd=21))", "نه - پورت ۸۰۸۰ اشغال است؛ یک پروسه node (PID 9001) روی آن گوش می‌دهد.", "fa"),
+    si("یک نمای کلی از سیستم بده", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nUptime: 3d 7h 42m\nCPU: Intel(R) Core(TM) Ultra 9 275HX (24 threads)\nLoad (1/5/15m): 0.42 / 0.55 / 0.61\nMemory: 11.2 used / 30.0 GB (19.0 available)\nDisk /: 62 used / 95 GB (29 free)\nNetwork: wlan0 192.168.1.42", "خلاصه وضعیت: Universe OS v0.7.1 با کرنل 7.2.0؛ لود سبک (۰.۴۲)؛ ۱۹ گیگابایت رم آزاد از ۳۰؛ دیسک روت ۶۹٪ پر؛ وای‌فای روی 192.168.1.42. همه‌چیز آرام است.", "fa"),
+    mem("یادت باشه پروژه‌ام توی پوشه projects/universe هست", "save", "project folder is ~/projects/universe", "noted - 1 note(s) kept", "حتماً - یادداشت کردم که پوشه پروژه‌ات ~/projects/universe است.", "fa"),
+    ws("جدیدترین نسخه کرنل لینوکس چیست؟", "web_search: latest Linux kernel version", "1. kernel.org - The Linux Kernel Archives\n   https://kernel.org\n   Latest mainline: 7.3-rc2 released 2026-09-21...", "طبق kernel.org، جدیدترین نسخه mainline، 7.3-rc2 است (۲۱ سپتامبر ۲۰۲۶)؛ شاخه‌های stable روی 7.2.x هستند.", "fa"),
     rc("¿Cuánto espacio queda en mi disco?", "df -h / | tail -1", "/dev/nvme0n1p8 95G 62G 29G 69% /", "Quedan 29 GB libres en el sistema de archivos raíz (69% usado). Todo en orden.", "es"),
-    si("Dame un resumen del sistema", "OS: Universe OS v0.7.0\nKernel: 7.2.0-070200-generic\nUptime: 1d 2h 10m\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Resumen: Universe OS v0.7.0, kernel 7.2.0, 1 día encendido. 25 GB de RAM libres y 65 GB de disco libre. Todo cómodo.", "es"),
+    si("Dame un resumen del sistema", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nUptime: 1d 2h 10m\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Resumen: Universe OS v0.7.1, kernel 7.2.0, 1 día encendido. 25 GB de RAM libres y 65 GB de disco libre. Todo cómodo.", "es"),
     rc("检查一下磁盘空间", "df -hT", DF_OUT, "根文件系统 (/) 已用 69%——95 GB 中剩余 29 GB。U 盘还有 6 GB 可用。", "zh"),
     rc("Quel processus utilise le plus de CPU ?", "ps aux --sort=-%cpu | head -4", "USER PID %CPU %MEM COMMAND\nrm 8830 92.1 3.0 ffmpeg", "ffmpeg consomme 92% d'un cœur — probablement un encodage en cours. Rien d'autre de lourd.", "fr"),
     rc("проверь свободное место на диске", "df -h / | tail -1", "/dev/nvme0n1p8 95G 62G 29G 69% /", "На корневом разделе свободно 29 ГБ из 95 (использовано 69%). Всё в норме.", "ru"),
     rc("كيف أتحقق من حالة الجدار الناري؟", "sudo ufw status", "Status: active\n\nTo Action From\n-- ------ ----\n22/tcp ALLOW Anywhere", "الجدار الناري (UFW) مفعّل، مع قاعدة واحدة تسمح بـ SSH على المنفذ 22. كل ما عدا ذلك مرفوض افتراضيًا.", "ar"),
-    si("sistemin genel durumunu göster", "OS: Universe OS v0.7.0\nKernel: 7.2.0-070200-generic\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Özet: Universe OS v0.7.0, çekirdek 7.2.0. 30 GB RAM'in 25 GB'ı ve 95 GB diskin 65 GB'ı boş — sistem rahat görünüyor.", "tr"),
+    si("sistemin genel durumunu göster", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Özet: Universe OS v0.7.1, çekirdek 7.2.0. 30 GB RAM'in 25 GB'ı ve 95 GB diskin 65 GB'ı boş — sistem rahat görünüyor.", "tr"),
     rc("チェック: ディスクの空き容量は?", "df -h / | tail -1", "/dev/nvme0n1p8 95G 62G 29G 69% /", "ルートファイルシステムの空きは29 GB（使用率69%）です。問題ありません。", "ja"),
 ok("how does the sudo gate work in Universe OS?", "how does sudo work", """Universe OS - Privilege gate (sudo)
 sudo is a symlink to universe-privilege. Every root request opens a GTK consent dialog showing:
@@ -259,8 +265,8 @@ sf("where are the log files?", "*.log", "/var/log", """/var/log/syslog.log
 /var/log/universe-firstboot.log
 /var/log/Xorg.0.log""",
  "Four log files under /var/log, including the Universe-specific ones: universe-boot.log and universe-firstboot.log. The first-boot log is the one to read if the initial setup misbehaved."),
-sf("find any .iso on disk", "*.iso", "/home/rm", """/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.0).iso""",
- "One ISO found: Universe-OS-beta(v0.7.0).iso on the Desktop - that is the current beta image."),
+sf("find any .iso on disk", "*.iso", "/home/rm", """/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.1).iso""",
+ "One ISO found: Universe-OS-beta(v0.7.1).iso on the Desktop - that is the current beta image."),
 ("check the disk and then tell me if the usb is still mounted", [("run_command", {"command": "df -hT"}, """Filesystem     Type  Size  Used Avail Use% Mounted on
 /dev/nvme0n1p2 ext4   95G   71G   24G  75% /
 tmpfs          tmpfs  16G  214M   16G   2% /tmp
@@ -330,7 +336,7 @@ mem("what notes do I have?", "list", None, """1. renew domain
 2. backup photos to external drive
 7. test the ISO on the old laptop""", "You have three notes: renew the domain, back up photos to an external drive, and test the ISO on the old laptop. Anything to add or remove?"),
 mem("remove the domain note, already done", "delete", "renew domain", "deleted note #1", "Removed note #1 (renew domain). Two notes remain: back up photos, and test the ISO."),
-si("what is my system running on?", """OS:        Universe OS v0.7.0 (Ubuntu 24.04 base)
+si("what is my system running on?", """OS:        Universe OS v0.7.1 (Ubuntu 24.04 base)
 Kernel:    6.14.0-29-generic
 Uptime:    3h 12m
 CPU:       AMD Ryzen 7 8845HS (16) @ 4.9GHz
@@ -340,7 +346,7 @@ Disk (/):  71G / 95G (75%)
 Battery:   78% (discharging, 3h 41m left)
 GPU:       NVIDIA RTX 5070 Ti Laptop / AMD Radeon 780M
 Network:   eth0 192.168.1.10, wlan0 down, tun0 10.8.0.6""",
- "You are on Universe OS v0.7.0 (Ubuntu 24.04 base), kernel 6.14, AMD Ryzen 7 8845HS with 30 GB RAM. Disk is 75% full, battery 78% with about 3h41m left, and the NVIDIA RTX 5070 Ti plus the AMD iGPU are both present. Ethernet and the VPN are up; Wi-Fi is down."),
+ "You are on Universe OS v0.7.1 (Ubuntu 24.04 base), kernel 6.14, AMD Ryzen 7 8845HS with 30 GB RAM. Disk is 75% full, battery 78% with about 3h41m left, and the NVIDIA RTX 5070 Ti plus the AMD iGPU are both present. Ethernet and the VPN are up; Wi-Fi is down."),
 ("how do I run a BTRFS scrub and check the result?", [("os_knowledge", {"query": "btrfs scrub"}, """Universe OS - BTRFS scrub
 Start:  sudo btrfs scrub start -B /
 Status: sudo btrfs scrub status /
@@ -591,8 +597,8 @@ systemctl status user@1000.service and the user's .config/systemd/user units."""
 ("check the usb stick and copy my iso onto it", [("run_command", {"command": "lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT | grep -A2 sdb"}, """sdb    29G
 └─sdb1 29G  exfat  MM  /run/media/rm/MM"""),
  ("run_command", {"command": "df -h /run/media/rm/MM | tail -1"}, "/dev/sdb1 29G 18G 11G 62% /run/media/rm/MM"),
- ("run_command", {"command": "rsync -ah --info=progress2 '/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.0).iso' /run/media/rm/MM/ && sync"}, """     4.71G 100%   92.14MB/s    0:00:51 (xfr#1, to-chk=0/1)"""),
- ("run_command", {"command": "sha256sum '/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.0).iso' /run/media/rm/MM/'Universe-OS-beta(v0.7.0).iso' | awk '{print $1}' | uniq -c"}, "2 b994a4fa1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f")],
+ ("run_command", {"command": "rsync -ah --info=progress2 '/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.1).iso' /run/media/rm/MM/ && sync"}, """     4.71G 100%   92.14MB/s    0:00:51 (xfr#1, to-chk=0/1)"""),
+ ("run_command", {"command": "sha256sum '/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.1).iso' /run/media/rm/MM/'Universe-OS-beta(v0.7.1).iso' | awk '{print $1}' | uniq -c"}, "2 b994a4fa1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f")],
  "The USB stick has 11 GB free and the ISO (4.71 GB) copied in 51 seconds. I verified the checksum on both sides - identical, so the copy is intact. Eject safely with udisksctl power-off -b /dev/sdb."),
 ("check whether the laptop is charging", [("run_command", {"command": "upower -i $(upower -e | grep BAT) | grep -E 'state|percentage|time to full|time to empty' | head -4"}, """state:               charging
 percentage:          64%
@@ -607,7 +613,7 @@ time to full:        1.2 hours"""),
  ("list_dir", {"path": "/home/rm/Desktop/Univerce-OS"}, """drwxr-xr-x  scripts/
 drwxr-xr-x  build/
 -rw-r--r--  Universe-OS-HANDOFF.md (48 KB)
--rw-r--r--  Universe-OS-beta(v0.7.0).iso (4.7 GB)""")],
+-rw-r--r--  Universe-OS-beta(v0.7.1).iso (4.7 GB)""")],
  "The main references are Universe-OS-HANDOFF.md (architecture and 56 proven pitfalls) in the project root, plus docs/HARNESS.md and docs/TRAINING.md for the AI side. I can open any of them - which one first?"),
 ("the clock is off by two hours", [("run_command", {"command": "timedatectl | grep -E 'Time zone|synchronized|RTC'"}, """Time zone: Europe/Berlin (CEST, +0200)
 System clock synchronized: no
@@ -624,7 +630,7 @@ RTC in local TZ: yes"""),
 /home/rm/Pictures/backup/IMG_4822.jpg"""),
  ("run_command", {"command": "du -sh /home/rm/Pictures/backup"}, "3.1G /home/rm/Pictures/backup")],
  "jdupes found duplicate pairs between /home/rm/Pictures/2025 and /home/rm/Pictures/backup - the backup folder holds 3.1 GB of copies. Do not delete blindly: review the list with jdupes -r -S /home/rm/Pictures, then remove one side, or keep the backup on external media instead."),
-("is there a way to see what the model knows about my os?", [("os_knowledge", {"query": "universe os overview"}, """Universe OS - Overview (v0.7.0)
+("is there a way to see what the model knows about my os?", [("os_knowledge", {"query": "universe os overview"}, """Universe OS - Overview (v0.7.1)
 Custom Linux by RM on Ubuntu 24.04 + GNOME 46 + Wayland. Signature feature: a
 graphical privilege gate (sudo). 12 first-party apps (universe-monitor,
 universe-appearance, universe-settings, universe-fetch, universe-firstboot,
@@ -676,10 +682,10 @@ offloaded on demand: __NV_PRIME_RENDER_OFFLOAD=1 <app>, or per-app in
 Universe Settings -> Graphics. Check with nvidia-smi.""")],
  "You have two GPUs: the AMD Radeon 780M (integrated) is driving the desktop right now, and the NVIDIA RTX 5070 Ti is idle with only 512 MB reserved. That is the intended power-efficient setup; run a heavy app with __NV_PRIME_RENDER_OFFLOAD=1 to put the RTX to work."),
 ("how do I check the iso checksum?", [("os_knowledge", {"query": "iso checksum"}, """Universe OS - Verifying the ISO
-  sha256sum 'Universe-OS-beta(v0.7.0).iso'
+  sha256sum 'Universe-OS-beta(v0.7.1).iso'
 Compare against the published value (release notes or .sha256 file).
 A mismatch means a bad download or a bad USB write - re-download, never boot it."""),
- ("run_command", {"command": "sha256sum '/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.0).iso'"}, "b994a4fa1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f  /home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.0).iso")],
+ ("run_command", {"command": "sha256sum '/home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.1).iso'"}, "b994a4fa1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f  /home/rm/Desktop/Univerce-OS/Universe-OS-beta(v0.7.1).iso")],
  "The ISO's SHA-256 is b994a4fa1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f - compare it with the value published with the release. If they match, the file is intact and safe to write to a USB stick."),
 ("the terminal says permission denied on my script", [("run_command", {"command": "ls -l /home/rm/bin/health.sh"}, "-rw-r--r-- 1 rm rm 238 Sep 22 14:31 /home/rm/bin/health.sh"),
  ("run_command", {"command": "chmod +x /home/rm/bin/health.sh && ls -l /home/rm/bin/health.sh"}, "-rwxr-xr-x 1 rm rm 238 Sep 22 14:31 /home/rm/bin/health.sh"),
@@ -711,7 +717,7 @@ Sep 22 03:00:01 universe rsync[9911]: rsync error: unexplained error (code 12)""
 ]
 
 NEGATIVE = [
-    ("What is Universe OS?", "Universe OS is a custom Linux distribution built from scratch by RM (Team RM) on Ubuntu 24.04 LTS. The current release is v0.7.0 with the GUI privilege gate as its signature feature."),
+    ("What is Universe OS?", "Universe OS is a custom Linux distribution built from scratch by RM (Team RM) on Ubuntu 24.04 LTS. The current release is v0.7.1 with the GUI privilege gate as its signature feature."),
     ("Who are you?", "I am Universe AI, one of the main features and options of Universe OS, built by RM."),
     ("How does sudo work in Universe OS?", "sudo is a symlink to universe-privilege: every root request opens a GUI consent dialog with the app, category and exact command, grant durations from once to 1 hour, and auto-deny after 45 seconds."),
     ("Explain file permissions.", "Each file has read/write/execute bits for owner, group and others: 644 readable, 755 executable, 600 private. chmod changes them, chown changes ownership."),
@@ -733,6 +739,7 @@ NEGATIVE = [
     ("What is a shebang?", "The first line of a script (#!/bin/bash) telling the kernel which interpreter runs the file."),
     ("Can you help me write a bash script?", "Of course - tell me what it should do and I will write it with edit_file, then run it to verify. As a start: what input does it take, and what is the output?"),
     ("What is 12 times 8?", "96."),
+    ("سلام، حالت چطوره؟", "سلام! من Universe AI هستم، دستیار مقیم Universe OS. خوبم - چه کاری برایت انجام بدهم؟"),
     ("Hey, thanks for the help earlier!", "You are welcome! Ping me anytime something needs checking on the machine."),
     ("¿Qué es Universe OS?", "Universe OS es una distribución Linux personalizada creada por RM sobre Ubuntu 24.04; su firma es el portero de privilegios gráfico (sudo)."),
 ]
@@ -773,8 +780,8 @@ gf("Which script writes the boot splash?", "splash", "/usr/lib/universe", "*.sh"
    "/usr/lib/universe/gen-boot-splash.sh:12:  out=\"$DIR/splash.raw\"\n/usr/lib/universe/gen-boot-splash.sh:31:  echo \"splash written\"",
    "gen-boot-splash.sh writes it - line 12 builds splash.raw and line 31 confirms the write. The splash is generated, not shipped as a static file."),
 gf("Find where that error message comes from.", "not within file bounds", "/home", "*.py",
-   "/home/rm/tools/check-model.py:44:  raise SystemExit(\"tensor not within file bounds\")",
-   "It comes from /home/rm/tools/check-model.py line 44 - a model file check that aborts when the tensor table points past the end of the file. That usually means a truncated download."),
+   "/home/kali/tools/check-model.py:44:  raise SystemExit(\"tensor not within file bounds\")",
+   "It comes from /home/kali/tools/check-model.py line 44 - a model file check that aborts when the tensor table points past the end of the file. That usually means a truncated download."),
 gf("Is the polkit rule for our helpers in place?", "universe-privilege", "/etc/polkit-1/rules.d", "*.rules",
    "/etc/polkit-1/rules.d/49-universe.rules:18:  if (action.id == \"org.universe.privilege\") {\n/etc/polkit-1/rules.d/49-universe.rules:22:  if (action.id == \"org.universe.approve\") {",
    "Yes - 49-universe.rules has both entries: org.universe.privilege on line 18 and org.universe.approve on line 22. If a helper is missing here, pkexec refuses it silently."),
@@ -784,8 +791,8 @@ gf("Which files mention the old control center?", "universe-control-center", "/u
 gf("Where is GTK_THEME set in the image?", "GTK_THEME", "/etc", "*.conf",
    "/etc/environment:4: GTK_THEME=Universe-Live",
    "In /etc/environment line 4: GTK_THEME=Universe-Live. That variable is the only thing that keeps libadwaita on our theme - without it the apps fall back to Adwaita-empty."),
-gf("Find every place the version string is written.", "v0.7.0", "/usr/lib/universe", "*.sh",
-   "/usr/lib/universe/build-iso-noroot.sh:22: VERSION=\"v0.7.0\"\n/usr/lib/universe/universe-fetch:9: VERSION=\"v0.7.0\"",
+gf("Find every place the version string is written.", "v0.7.1", "/usr/lib/universe", "*.sh",
+   "/usr/lib/universe/build-iso-noroot.sh:22: VERSION=\"v0.7.1\"\n/usr/lib/universe/universe-fetch:9: VERSION=\"v0.7.1\"",
    "Two places in that tree: build-iso-noroot.sh line 22 and universe-fetch line 9. Remember the version also lives in etc/os-release, etc/lsb-release, etc/issue, usr/lib/os-release, universe-monitor and universe-settings - keep them all in sync."),
 gf("Any TODO left in the settings app?", "TODO", "/usr/bin", "universe-*",
    "/usr/bin/universe-settings:812:  # TODO: move the snapshot page to the rust app",
@@ -808,8 +815,8 @@ fi("How many files are in the app directory?", "/opt/universe-ai",
 du_("The disk is full - where is it going?", "/", 12,
    "Filesystem      Type  Size  Used Avail Use%\n/dev/nvme0n1p8  ext4   95G   91G  3.6G  97% /\n\nLargest entries under /:\n34G  /usr\n47G  /home\n3.1G /opt\n1.7G /var\n4.1G /swapfile-uai",
    "The root filesystem is at 97 percent. /home holds 47G and /usr 34G; the swap file alone is 4.1G. The usual culprits here are build trees, old ISO images and cargo target directories - I can list the biggest files if you want to trim."),
-du_("What is using space in my home?", "/home/rm", 10,
-   "Largest entries under /home/rm:\n8.3G  Desktop/Univerce-OS\n2.7G  Desktop/Server-FullBackup-2026-09-15.tar.gz\n1.4G  pera-backups-all.tar.zst\n721M  .local/share/opencode/opencode.db\n265M  uai-build/llama.cpp",
+du_("What is using space in my home?", "/home/kali", 10,
+   "Largest entries under /home/kali:\n8.3G  Desktop/Univerce-OS\n2.7G  Desktop/Server-FullBackup-2026-09-15.tar.gz\n1.4G  pera-backups-all.tar.zst\n721M  .local/share/opencode/opencode.db\n265M  uai-build/llama.cpp",
    "The OS project itself is 8.3G, then a 2.7G server backup and a 1.4G archive. Those two backups alone are 4.1G - if they are already stored elsewhere they are the easiest win."),
 du_("How much room is left before I build an ISO?", "", 6,
    "Filesystem      Type  Size  Used Avail Use%\n/dev/nvme0n1p8  ext4   95G   91G  3.6G  97% /\n\nA fresh ISO needs about 1.83 GiB free after the old ISO is deleted.",

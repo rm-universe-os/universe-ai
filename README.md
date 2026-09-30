@@ -7,7 +7,7 @@
 The resident desktop agent of Universe OS — a living 3D black hole that sits on your
 desktop, watches your cursor, talks with you and runs your machine.
 
-**by RM · Universe OS beta v0.7.0**
+**by RM · Universe OS beta v0.7.1**
 
 </div>
 
@@ -39,8 +39,10 @@ npm start
 ```
 
 First launch asks to download the LLM (~2.7 GB) from the
-[releases](https://github.com/rm-universe-os/universe-ai/releases) — after that everything
-works offline.
+[latest release](https://github.com/rm-universe-os/universe-ai/releases/latest) — the app
+reads `universe-ai-model.tar.zst.part-NN` and `…tar.zst.sha256` from
+`releases/latest/download/`, verifies the hash and installs it into ollama. After that
+everything works offline.
 
 ## Ships in Universe OS
 
@@ -82,7 +84,7 @@ Fine-tuned on an **RTX 5070 Ti** (12 GB):
   drivers, audio stacks, containers — symptom → diagnosis → fix.
 - **Universe OS internals** — every universe-* app, the GUI privilege gate, the mode
   system (standard / developer / hacker / server), BTRFS + snapshots, the build
-  pipeline, the security model, plus an appendix of proven engineering traps (v0.7.0).
+  pipeline, the security model, plus an appendix of proven engineering traps (v0.7.1).
 - **The OS project itself** — file-level knowledge of the whole Universe OS tree: the
   boot chain, GRUB theme metrics, the build and sync scripts, the rootfs layout, the
   Rust components, the verification tools and the known traps, so it can answer about any
@@ -132,7 +134,7 @@ automatically.
 ## The harness
 
 The model is wrapped in an agent harness that gives it hands and keeps you in control —
-twelve tools, an approval gate for anything that changes the machine, SSRF-guarded
+eighteen tools, an approval gate for anything that changes the machine, SSRF-guarded
 fetching, and a read-only-by-default command classifier. Every tool call is visible in
 the chat as a collapsible block. See [docs/HARNESS.md](docs/HARNESS.md) for the
 tool-by-tool reference.

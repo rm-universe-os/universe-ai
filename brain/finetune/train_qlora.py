@@ -6,7 +6,7 @@ from trl import SFTTrainer, SFTConfig
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BLOB = os.path.expanduser("~/.ollama/models/blobs/sha256-85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9")
-GGUF_DIR = "/tmp/universe-ai-gguf"
+GGUF_DIR = "/tmp/opencode/gguf-work"
 GGUF = os.path.join(GGUF_DIR, "universe-ai.gguf")
 DATA = os.path.join(HERE, "..", "knowledge", "dataset.jsonl")
 OUT = os.path.join(HERE, "out")

@@ -37,8 +37,24 @@ const CONFIG_DIR = process.env.UAI_CONFIG_DIR || path.join(HOME, ".config", "uni
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 app.setName("Universe AI");
 app.commandLine.appendSwitch("class", "universe-ai");
-app.commandLine.appendSwitch("enable-unsafe-swiftshader");
-app.disableHardwareAcceleration();
+/* Render on the GPU.
+ *
+ * The pet is a Three.js scene in a transparent always-on-top window, and it
+ * used to be forced onto the software rasteriser
+ * (app.disableHardwareAcceleration() plus enable-unsafe-swiftshader).  On a
+ * machine with a GPU that is the wrong trade by an order of magnitude: the
+ * scene is re-rasterised on the CPU on every frame, which measured 306% CPU
+ * inside the test VM - more than the shell, the compositor and every app put
+ * together - and a desktop whose mascot eats three cores is a desktop whose
+ * menus stop opening.
+ *
+ * UAI_SOFTWARE_GL=1 keeps the old path for a machine whose driver cannot
+ * composite a transparent window (the reason the software path was there in
+ * the first place); nothing else changes. */
+if (process.env.UAI_SOFTWARE_GL === "1") {
+    app.commandLine.appendSwitch("enable-unsafe-swiftshader");
+    app.disableHardwareAcceleration();
+}
 const LOG = path.join(os.tmpdir(), "universe-ai.log");
 
 function logErr(kind, err) {
@@ -70,6 +86,7 @@ const DEFAULTS = {
     eyesFollow: true,
     petHidden: false,
     cinemaAuto: true,
+    musicAuto: true,
     setupPrompted: false,
     model: "universe-ai",
     ollamaUrl: "http://127.0.0.1:11434",
@@ -770,6 +787,7 @@ function sendConfig() {
         clickThrough,
         docked: petDocked,
         cinema: cinemaOn,
+        music: musicOn,
         mode: outfitMode
     })
 }
@@ -907,10 +925,17 @@ setInterval(pollGaze, 33);
 let cinemaProc = null,
     cinemaOn = false,
     cinemaPreviewUntil = 0,
-    cinemaPreviewTimer = null;
+    cinemaPreviewTimer = null,
+    musicOn = false,
+    musicPreviewUntil = 0,
+    musicPreviewTimer = null;
 
 function cinemaAuto() {
     return config.cinemaAuto !== false
+}
+
+function musicAuto() {
+    return config.musicAuto !== false
 }
 
 function setCinema(on, info, force) {
@@ -925,6 +950,19 @@ function setCinema(on, info, force) {
     if (DBG) console.log("[cinema]", cinemaOn ? "on" : "off", info && info.player || "", info && info.title || "")
 }
 
+function setMusic(on, info, force) {
+    if (!force && (!musicAuto() || Date.now() < musicPreviewUntil)) return;
+    if (musicOn === !!on) return;
+    musicOn = !!on;
+    sendPet("music", {
+        on: musicOn,
+        title: info && info.title || "",
+        artist: info && info.artist || "",
+        player: info && info.player || ""
+    });
+    if (DBG) console.log("[music]", musicOn ? "on" : "off", info && info.player || "", info && info.title || "", info && info.artist || "")
+}
+
 function previewCinema() {
     cinemaPreviewUntil = Date.now() + 14e3;
     setCinema(true, {
@@ -934,6 +972,18 @@ function previewCinema() {
     cinemaPreviewTimer = setTimeout(() => {
         cinemaPreviewUntil = 0;
         setCinema(false, null, true)
+    }, 14e3)
+}
+
+function previewMusic() {
+    musicPreviewUntil = Date.now() + 14e3;
+    setMusic(true, {
+        title: "Music preview"
+    }, true);
+    clearTimeout(musicPreviewTimer);
+    musicPreviewTimer = setTimeout(() => {
+        musicPreviewUntil = 0;
+        setMusic(false, null, true)
     }, 14e3)
 }
 
@@ -964,7 +1014,8 @@ function startCinemaWatch() {
             } catch (e) {
                 continue
             }
-            setCinema(!!msg.cinema, msg)
+            setCinema(!!msg.cinema, msg);
+            setMusic(!!msg.music, msg)
         }
     });
     cinemaProc.stderr.setEncoding("utf8");
@@ -998,6 +1049,10 @@ function buildTray() {
 
 function trayMenu() {
     const eff = config.reasoningEffort || "medium";
+    /* The label is plain text: a radio item already draws its own indicator
+     * on the left, so the "\u25CF Medium" spelling that used to be here put a
+     * second, white dot next to MEDIUM ("there is an extra white dot beside
+     * MEDIUM in the Universe AI menu - remove it"). */
     const effItem = (label, value) => ({
         label,
         type: "radio",
@@ -1008,6 +1063,44 @@ function trayMenu() {
             tray.setContextMenu(trayMenu())
         }
     });
+    const sizeItem = (label, value) => ({
+        label,
+        type: "radio",
+        checked: Math.round(petSize()) === value,
+        click: () => {
+            config.sizeChosen = true;
+            applySize(value);
+            tray.setContextMenu(trayMenu())
+        }
+    });
+    const SIZE_NAME = {
+        260: "Extra small (260)",
+        340: "Small (340)",
+        440: "Medium (440)",
+        580: "Large (580)"
+    };
+    const sizeNow = Math.round(petSize());
+    const effNow = {
+        off: "Off",
+        low: "Low",
+        medium: "Medium",
+        high: "High"
+    }[eff] || "Medium";
+    /* The menu has to fit between the panel and the bottom of the screen.
+     *
+     * A flat menu costs about 50px a row and 20px a separator, and this one
+     * had grown to 22 rows + 6 separators = 1217px.  On an 800px screen the
+     * menu opens at y=47, so everything below 800 was painted past the bottom
+     * edge and could not be reached at all - the last eight commands,
+     * "Quit" among them.  (Measured on the live session: the popup box read
+     * size=311x1217 while the screen is 800 tall.)
+     *
+     * The four blocks that are really *lists* - size, reasoning effort, the
+     * animation switches and the pet's position - are submenus now.  That
+     * leaves 9 rows + 3 separators (~490px) with every command one hover
+     * away, and the two rows that carry a value say what it currently is.
+     * A submenu expands in place, so a menu that overflows while one is open
+     * comes back as soon as it is collapsed - nothing is unreachable. */
     return Menu.buildFromTemplate([{
         label: "Universe AI",
         enabled: false
@@ -1024,80 +1117,72 @@ function trayMenu() {
     }, {
         type: "separator"
     }, {
-        type: "radio",
-        label: "Size: Extra small (260)",
-        checked: Math.round(petSize()) === 260,
-        click: () => {
-            config.sizeChosen = true;
-            applySize(260);
-            tray.setContextMenu(trayMenu())
-        }
+        label: "Size: " + (SIZE_NAME[sizeNow] || sizeNow),
+        submenu: [
+            sizeItem("Extra small (260)", 260),
+            sizeItem("Small (340)", 340),
+            sizeItem("Medium (440)", 440),
+            sizeItem("Large (580)", 580)
+        ]
     }, {
-        type: "radio",
-        label: "Size: Small (340)",
-        checked: Math.round(petSize()) === 340,
-        click: () => {
-            config.sizeChosen = true;
-            applySize(340);
-            tray.setContextMenu(trayMenu())
-        }
+        label: "Reasoning effort: " + effNow,
+        submenu: [
+            effItem("Off", "off"),
+            effItem("Low", "low"),
+            effItem("Medium", "medium"),
+            effItem("High", "high")
+        ]
     }, {
-        type: "radio",
-        label: "Size: Medium (440)",
-        checked: Math.round(petSize()) === 440,
-        click: () => {
-            config.sizeChosen = true;
-            applySize(440);
-            tray.setContextMenu(trayMenu())
-        }
+        label: "Animations",
+        submenu: [{
+            type: "checkbox",
+            label: "Cinema glasses when a film plays",
+            checked: cinemaAuto(),
+            click: mi => {
+                config.cinemaAuto = !!mi.checked;
+                saveConfig();
+                if (!config.cinemaAuto) setCinema(false, null, true);
+                tray.setContextMenu(trayMenu())
+            }
+        }, {
+            label: "Preview the cinema animation",
+            click: () => previewCinema()
+        }, {
+            type: "checkbox",
+            label: "Headphones when music plays",
+            checked: musicAuto(),
+            click: mi => {
+                config.musicAuto = !!mi.checked;
+                saveConfig();
+                if (!config.musicAuto) setMusic(false, null, true);
+                tray.setContextMenu(trayMenu())
+            }
+        }, {
+            label: "Preview the music animation",
+            click: () => previewMusic()
+        }, {
+            label: "Preview the Developer animation",
+            click: () => previewMode("developer")
+        }, {
+            label: "Preview the Hacker animation",
+            click: () => previewMode("hacker")
+        }]
     }, {
-        type: "radio",
-        label: "Size: Large (580)",
-        checked: Math.round(petSize()) === 580,
-        click: () => {
-            config.sizeChosen = true;
-            applySize(580);
-            tray.setContextMenu(trayMenu())
-        }
+        label: "Position",
+        submenu: [{
+            label: "Dock at bottom edge",
+            click: () => dockPet(true)
+        }, {
+            label: "Reset to default corner",
+            click: () => resetCorner()
+        }]
     }, {
-        type: "separator"
-    }, {
-        label: "Reasoning effort:",
-        enabled: false
-    }, effItem("\u25CB Off", "off"), effItem("\u25CB Low", "low"), effItem("\u25CF Medium", "medium"), effItem("\u25CB High", "high"), {
         type: "separator"
     }, {
         label: "Set up the AI model\u2026",
         click: () => runSetupFlow()
     }, {
         type: "separator"
-    }, {
-        type: "checkbox",
-        label: "Cinema glasses when a film plays",
-        checked: cinemaAuto(),
-        click: mi => {
-            config.cinemaAuto = !!mi.checked;
-            saveConfig();
-            if (!config.cinemaAuto) setCinema(false, null, true);
-            tray.setContextMenu(trayMenu())
-        }
-    }, {
-        label: "Preview the cinema animation",
-        click: () => previewCinema()
-    }, {
-        label: "Preview the Developer animation",
-        click: () => previewMode("developer")
-    }, {
-        label: "Preview the Hacker animation",
-        click: () => previewMode("hacker")
-    }, {
-        type: "separator"
-    }, {
-        label: "Dock at bottom edge",
-        click: () => dockPet(true)
-    }, {
-        label: "Reset to default corner",
-        click: () => resetCorner()
     }, {
         label: "Quit",
         click: () => {
@@ -3789,6 +3874,16 @@ app.whenReady().then(async () => {
             setTimeout(() => {
                 cap.webContents.executeJavaScript("window.__uaiMascot && window.__uaiMascot.cinema(false); 'ok'").catch(() => {})
             }, Number(process.env.UAI_CINEMA_OFF_AT))
+        }
+        if (process.env.UAI_MUSIC) {
+            setTimeout(() => {
+                cap.webContents.executeJavaScript("window.__uaiMascot && window.__uaiMascot.music(true); 'ok'").catch(() => {})
+            }, Number(process.env.UAI_MUSIC_AT || 1200))
+        }
+        if (process.env.UAI_MUSIC_OFF_AT) {
+            setTimeout(() => {
+                cap.webContents.executeJavaScript("window.__uaiMascot && window.__uaiMascot.music(false); 'ok'").catch(() => {})
+            }, Number(process.env.UAI_MUSIC_OFF_AT))
         }
         if (process.env.UAI_MODE) {
             setTimeout(() => {

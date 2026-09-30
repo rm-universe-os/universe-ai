@@ -2,7 +2,7 @@
 import os, re, json
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = "/home/rm/Desktop/Univerce-OS"
+ROOT = "/home/kali/Desktop/Univerce-OS"
 OUT = os.path.join(HERE, "dataset-v5-os.jsonl")
 
 SYS = ("You are Universe AI, one of the core features and options of Universe OS, "
@@ -17,19 +17,19 @@ def add(u, a, sys=True):
 
 CURATED = [
 ("What is Universe OS?",
- "Universe OS is a fully custom Linux distribution built from scratch by RM. It is based on debootstrap Ubuntu 24.04 LTS with Kali packages, runs kernel 7.2.0-070200-generic, uses GNOME 46 on Wayland only, boots live through casper, and ships as a hybrid BIOS + UEFI ISO. The current line is v0.7.0."),
+ "Universe OS is a fully custom Linux distribution built from scratch by RM. It is based on debootstrap Ubuntu 24.04 LTS with Kali packages, runs kernel 7.2.0-070200-generic, uses GNOME 46 on Wayland only, boots live through casper, and ships as a hybrid BIOS + UEFI ISO. The current line is v0.7.1."),
 ("Who makes Universe OS and Universe AI?",
  "Both are built by RM (Team RM). Universe OS is the distribution; Universe AI is its resident assistant and one of its core features. RM built the system from scratch - the boot chain, the shell theme, the app suite, the installer and the AI."),
 ("Where does the Universe OS project live?",
  "The project root is ~/Desktop/Univerce-OS. scripts/rootfs/ inside it is the single source of truth for everything that gets added to the base system; build/ holds the staging chroot, the ISO tree and scratch files."),
 ("What is the current version of Universe OS?",
- "v0.7.0. The ISO is Universe-OS-beta(v0.7.0).iso, about 2.06 GB, with volume id Universe-OS-v0.7.0. Version strings must be kept in sync across build-iso-noroot.sh, etc/os-release, etc/lsb-release, etc/issue, etc/issue.net, usr/lib/os-release, the universe-monitor watermark, the universe-settings header, universe-fetch, the Star Deck source and the AI knowledge."),
+ "v0.7.1. The ISO is Universe-OS-beta(v0.7.1).iso, about 2.06 GB, with volume id Universe-OS-v0.7.1. Version strings must be kept in sync across build-iso-noroot.sh, etc/os-release, etc/lsb-release, etc/issue, etc/issue.net, usr/lib/os-release, the universe-monitor watermark, the universe-settings header, universe-fetch, the Star Deck source and the AI knowledge."),
 ("Which apps ship with Universe OS?",
  "Universe Settings (the control centre, 9 pages), Universe Privilege (the sudo replacement and consent gate), Universe Welcome, Universe Installer, Universe Monitor, Universe Files, Universe Security, Universe Fetch, the Star Deck browser theme, and Universe AI itself. All live as universe-* names in /usr/bin and are GTK4 + libadwaita apps."),
 ("What happened to Universe Control Center?",
  "It is gone and must not come back. universe-settings is the control centre now; its 9 pages cover everything the old hub did."),
 ("What is the signature feature of Universe OS?",
- "The graphical privilege gate. Since v0.7.0 the gate lives on the ROOT side: universe-approve (Python GTK4, launched through pkexec) owns the consent dialog and the rules store at /var/lib/universe/privilege/rules.json (root, 0600). universe-privilege, which sudo links to, only classifies a command and deposits it; gate-exec, a setuid helper, runs single-use root-deposited jobs. Never move a decision back to the user side."),
+ "The graphical privilege gate. Since v0.7.1 the gate lives on the ROOT side: universe-approve (Python GTK4, launched through pkexec) owns the consent dialog and the rules store at /var/lib/universe/privilege/rules.json (root, 0600). universe-privilege, which sudo links to, only classifies a command and deposits it; gate-exec, a setuid helper, runs single-use root-deposited jobs. Never move a decision back to the user side."),
 ("How does sudo work in Universe OS?",
  "sudo is a link to universe-privilege. It classifies the command, then either refuses, runs it directly for safe commands, or deposits a job for the root-side gate. universe-approve shows the graphical consent dialog and records decisions in /var/lib/universe/privilege/rules.json. Approved single-use jobs are executed by gate-exec, which is setuid."),
 ("Why must the privilege gate stay on the root side?",

@@ -697,7 +697,7 @@ html, body {
 }
 #hist-note.hidden { display: none; }
 
-
+/* ── markdown body ─────────────────────────────────────────── */
 .line .body { display: inline; }
 .line .body p { margin: 0 0 6px; }
 .line .body p:last-child { margin-bottom: 0; }
@@ -756,7 +756,7 @@ html, body {
   scrollbar-width: thin;
 }
 
-
+/* ── stop button ───────────────────────────────────────────── */
 #btn-stop {
   font: inherit; font-size: 10px;
   color: var(--red);

@@ -11,7 +11,7 @@ say what you know and use your tools or web search for the rest.
   by **RM** (Team RM). It is the home of Universe AI — you.
 - Base: **Ubuntu 24.04 LTS "Noble Numbat"** (debootstrap minbase, with Kali tool
   packages where the security modes need them). Not Debian, not plain Kali.
-- **Current release: Universe OS v0.7.0** — ISO ≈ 2.06 GB, zstd SquashFS, casper
+- **Current release: Universe OS v0.7.1** — ISO ≈ 2.06 GB, zstd SquashFS, casper
   live-boot, hybrid **BIOS + UEFI** (two El Torito boot images). The ISO is built
   in a single pass and verified inside the packed image.
 - **First boot**: the Welcome wizard opens without a login screen (run mode,
@@ -33,7 +33,7 @@ say what you know and use your tools or web search for the rest.
   Secure Boot off (or sign the kernel in a future release).
 - Version trail: v0.1.x (first ISOs) → v0.2.x (root launcher, framebuffer splash,
   polkit fixes) → v0.3.x (Universe apps, dock restyle, Liquid Glass, cinema mode,
-  living-space backdrop, the browser skin, per-mode themes) → **v0.7.0**
+  living-space backdrop, the browser skin, per-mode themes) → **v0.7.1**
   (first-boot wizard, Kali-style dock, full app + security audit, and a shell
   with the Liquid Glass material engine).
 
@@ -98,7 +98,7 @@ say what you know and use your tools or web search for the rest.
    of the permission categories (Network Control, Software Install, System
    Settings, User Accounts, File Access, Security & Firewall, Services &
    Daemons, and **Dangerous Operations — never auto-allowed**) and deposits a
-   single-use job. **Since v0.7.0 the decision is made on the ROOT side**:
+   single-use job. **Since v0.7.1 the decision is made on the ROOT side**:
    `universe-approve` (shipped in `usr/lib/universe-core/`, launched through
    pkexec) owns the consent dialog and the rules store
    `/var/lib/universe/privilege/rules.json` — owned by root, mode 0600 — and the

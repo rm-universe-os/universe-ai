@@ -10,8 +10,8 @@ const origRAF = window.requestAnimationFrame.bind(window);
 window.requestAnimationFrame = function(cb) {
     return origRAF(function(t) {
         cb(t);
-        if (wantCapture) readCapture()
-    })
+        if (wantCapture) readCapture();
+    });
 };
 
 function readCapture() {
@@ -20,7 +20,7 @@ function readCapture() {
         const gl = canvas.getContext("webgl") || canvas.getContext("webgl2");
         if (!gl) {
             wantCapture = null;
-            return resolve("")
+            return resolve("");
         }
         const w = gl.drawingBufferWidth,
             h = gl.drawingBufferHeight;
@@ -30,13 +30,14 @@ function readCapture() {
         for (let i = 3; i < px.length; i += 40)
             if (px[i] > 0) {
                 hasAlpha = true;
-                break
-            } if (!hasAlpha) return;
+                break;
+            }
+        if (!hasAlpha) return;
         wantCapture = null;
-        resolve(convertToPngDataURL(px, w, h))
+        resolve(convertToPngDataURL(px, w, h));
     } catch (e) {
         wantCapture = null;
-        resolve("")
+        resolve("");
     }
 }
 
@@ -58,38 +59,55 @@ function convertToPngDataURL(px, w, h) {
             if (a > 0) {
                 d[t] = Math.min(255, Math.round(px[s] * 255 / a));
                 d[t + 1] = Math.min(255, Math.round(px[s + 1] * 255 / a));
-                d[t + 2] = Math.min(255, Math.round(px[s + 2] * 255 / a))
+                d[t + 2] = Math.min(255, Math.round(px[s + 2] * 255 / a));
             }
         }
     }
     ctx.putImageData(img, 0, 0);
-    return out.toDataURL("image/png")
+    return out.toDataURL("image/png");
 }
 window.__uaiCapture = function() {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         wantCapture = resolve;
         setTimeout(() => {
             if (wantCapture === resolve) {
                 wantCapture = null;
-                resolve("")
+                resolve("");
             }
-        }, 900)
-    })
+        }, 900);
+    });
 };
 const mascot = window.UniverseAI.init(canvas, {
     background: false
+
 });
+/* Exposed so the build's screenshot harness can pose the mascot (the cinema
+ * props are otherwise only reachable through a real film playing). */
 window.__uaiMascot = mascot;
+
+/* A film started or stopped: glasses on, popcorn out. */
 ipcRenderer.on("cinema", (e, c) => {
-    console.log("[pet] cinema ipc", JSON.stringify(c), "mascot=" + (mascot ? "yes" : "no"));
-    if (mascot && mascot.cinema) mascot.cinema(!!(c && c.on))
+    /* Forwarded to the main process log when UAI_DEBUG is set. */
+    console.log("[pet] cinema ipc", JSON.stringify(c),
+        "mascot=" + (mascot ? "yes" : "no"));
+    if (mascot && mascot.cinema) mascot.cinema(!!(c && c.on));
 });
+
+/* A song started or stopped: headphones on, notes up.  Sent even while a
+ * film is playing; the mascot gives the film priority, so nothing here has
+ * to know about the other state. */
+ipcRenderer.on("music", (e, m) => {
+    console.log("[pet] music ipc", JSON.stringify(m),
+        "mascot=" + (mascot ? "yes" : "no"));
+    if (mascot && mascot.music) mascot.music(!!(m && m.on));
+});
+
 let dockedNow = false;
 canvas.addEventListener("click", () => ipcRenderer.send("pet-click"));
 ipcRenderer.on("docked", (e, d) => {
     dockedNow = !!(d && d.docked);
-    if (mascot && mascot.lift) mascot.lift(dockedNow ? 1 : 0);
-    if (mascot && mascot.lookAt) mascot.lookAt(0, dockedNow ? -.28 : 0)
+    if (mascot && mascot.lift) mascot.lift(dockedNow ? 1.0 : 0);
+    if (mascot && mascot.lookAt) mascot.lookAt(0, dockedNow ? -0.28 : 0);
 });
 
 function feedGaze(gx, gy) {
@@ -99,7 +117,7 @@ function feedGaze(gx, gy) {
         clientY: r.top + r.height / 2 + gy * innerHeight,
         bubbles: true
     });
-    dispatchEvent(ev)
+    dispatchEvent(ev);
 }
 let lastGX = null,
     lastGY = null;
@@ -107,14 +125,23 @@ ipcRenderer.on("gaze", (e, g) => {
     if (g.x !== lastGX || g.y !== lastGY) {
         lastGX = g.x;
         lastGY = g.y;
-        feedGaze(g.x, g.y)
+        feedGaze(g.x, g.y);
     }
 });
 ipcRenderer.on("config", (e, c) => {
     if (c && c.eyesFollow === false) feedGaze(0, 0);
-    console.log("[pet] config ipc cinema=" + (c && c.cinema), "mode=" + (c && c.mode), "mascot=" + (mascot ? "yes" : "no"));
+    /* Replayed on every load, because the one-shot `cinema` message is sent
+     * when the film starts - which may be before this window existed. */
+    console.log("[pet] config ipc cinema=" + (c && c.cinema),
+        "music=" + (c && c.music),
+        "mode=" + (c && c.mode), "mascot=" + (mascot ? "yes" : "no"));
     if (c && mascot && mascot.cinema) mascot.cinema(!!c.cinema);
-    if (c && mascot && mascot.outfit) mascot.outfit(c.mode)
+    /* Replayed for the same reason, and it matters more here: a song is
+     * usually already playing when the desktop comes up. */
+    if (c && mascot && mascot.music) mascot.music(!!c.music);
+    /* The mode is replayed here too, so a mascot that starts while the desktop
+     * is already in Developer or Hacker mode is dressed from its first frame. */
+    if (c && mascot && mascot.outfit) mascot.outfit(c.mode);
 });
 const speechEl = document.getElementById("speech");
 const speechQueue = [];
@@ -122,7 +149,7 @@ let speaking = false;
 
 function speak(text) {
     speechQueue.push(String(text || ""));
-    if (!speaking) nextSpeech()
+    if (!speaking) nextSpeech();
 }
 
 function nextSpeech() {
@@ -132,7 +159,7 @@ function nextSpeech() {
         if (mascot && mascot.talk) mascot.talk(false);
         speechEl.classList.remove("show");
         ipcRenderer.send("speech-done");
-        return
+        return;
     }
     speaking = true;
     if (mascot && mascot.talk) mascot.talk(true);
@@ -149,18 +176,18 @@ function nextSpeech() {
         const n = Math.min(text.length, Math.floor(acc * CHARS_PER_SEC));
         if (n !== i) {
             i = n;
-            speechEl.textContent = text.slice(0, i) + (i < text.length ? "\u258C" : "")
+            speechEl.textContent = text.slice(0, i) + (i < text.length ? "\u258C" : "");
         }
         if (i < text.length) requestAnimationFrame(step);
         else {
             speechEl.textContent = text;
             setTimeout(() => {
                 speechEl.classList.remove("show");
-                setTimeout(nextSpeech, 500)
-            }, 2400 + text.length * 14)
+                setTimeout(nextSpeech, 500);
+            }, 2400 + text.length * 14);
         }
     }
-    requestAnimationFrame(step)
+    requestAnimationFrame(step);
 }
 ipcRenderer.on("speech", (e, m) => speak(m && m.text));
 
@@ -168,44 +195,46 @@ function pulse() {
     if (mascot) mascot.blink();
     canvas.dispatchEvent(new MouseEvent("click", {
         bubbles: true
-    }))
+    }));
 }
 ipcRenderer.on("pulse", () => pulse());
 ipcRenderer.on("perk", () => {
-    if (mascot && mascot.blink) mascot.blink()
+    /* Hovering the pet used to make the black hole jump. That effect is gone,
+     * so the only reaction left is a blink. */
+    if (mascot && mascot.blink) mascot.blink();
 });
 let winDragging = false,
     winMoved = false;
-window.addEventListener("mousedown", ev => {
+window.addEventListener("mousedown", (ev) => {
     if (ev.button === 2) {
         winDragging = true;
         winMoved = false;
-        ev.preventDefault()
+        ev.preventDefault();
     }
 });
 window.addEventListener("mousemove", () => {
     if (!winDragging) return;
     if (!winMoved) {
         ipcRenderer.send("drag-start");
-        winMoved = true
+        winMoved = true;
     }
-    ipcRenderer.send("drag-move")
+    ipcRenderer.send("drag-move");
 });
-window.addEventListener("mouseup", ev => {
+window.addEventListener("mouseup", (ev) => {
     if (winDragging && ev.button === 2) {
         winDragging = false;
-        ipcRenderer.send("drag-end")
+        ipcRenderer.send("drag-end");
     }
 });
-window.addEventListener("contextmenu", ev => ev.preventDefault());
+window.addEventListener("contextmenu", (ev) => ev.preventDefault());
 canvas.addEventListener("dblclick", () => ipcRenderer.send("chat-toggle"));
 let wheelLock = 0;
-window.addEventListener("wheel", ev => {
+window.addEventListener("wheel", (ev) => {
     const now = performance.now();
     if (now - wheelLock < 60) return;
     wheelLock = now;
     ipcRenderer.send("resized", {
         delta: ev.deltaY < 0 ? 40 : -40
-    })
+    });
 });
 ipcRenderer.send("ready");
