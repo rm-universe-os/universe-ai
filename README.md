@@ -119,8 +119,7 @@ Fine-tuned on an **RTX 5070 Ti** (12 GB):
 | `test_model.py` | the verification battery (identity, OS, Linux, multilingual, tools) |
 
 Hardware used: RTX 5070 Ti (12 GB) - 3 epochs ~ 60 minutes. The streaming GGUF loader
-keeps the RAM peak at ~9 GB instead of the ~24 GB the stock loader needs; see
-[docs/TRAINING.md](docs/TRAINING.md) for the full story.
+keeps the RAM peak at ~9 GB instead of the ~24 GB the stock loader needs; see the training scripts under `brain/finetune/` for the full story.
 
 ### Packaging
 
@@ -136,8 +135,7 @@ automatically.
 The model is wrapped in an agent harness that gives it hands and keeps you in control -
 eighteen tools, an approval gate for anything that changes the machine, SSRF-guarded
 fetching, and a read-only-by-default command classifier. Every tool call is visible in
-the chat as a collapsible block. See [docs/HARNESS.md](docs/HARNESS.md) for the
-tool-by-tool reference.
+the chat as a collapsible block. The tool reference lives in the source under `brain/` and `main.js`.
 
 ## Chat & history
 
@@ -160,6 +158,5 @@ main.js        shell: windows, tray, global gaze, HTTP API, agent brain, history
 mascot.js      the 3D black hole engine (Three.js)
 renderer/      pet window + chat window + setup flow
 brain/         knowledge base, dataset generators, training scripts
-docs/          HARNESS.md · TRAINING.md
 scripts/       installers + model packaging
 ```
