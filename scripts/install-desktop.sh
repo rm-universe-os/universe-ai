@@ -8,7 +8,7 @@ DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/universe-ai.desktop"
 EXEC="$DIR/scripts/run.sh"
 
-[ -f "$ICON_SRC" ] || { echo "missing $ICON_SRC — run the app once with UAI_LOGO=$ICON_SRC to capture it" >&2; exit 1; }
+[ -f "$ICON_SRC" ] || { echo "missing $ICON_SRC - run the app once with UAI_LOGO=$ICON_SRC to capture it" >&2; exit 1; }
 
 mkdir -p "$(dirname "$ICON_DST")" "$DESKTOP_DIR"
 cp "$ICON_SRC" "$ICON_DST"

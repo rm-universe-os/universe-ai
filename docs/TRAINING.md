@@ -1,7 +1,7 @@
-# Training Universe AI — the full fine-tuning story
+# Training Universe AI - the full fine-tuning story
 
 This document explains exactly how the model behind Universe AI was trained: a real
-LoRA fine-tune of **Qwen3-4B-Instruct-2507** on a single consumer GPU, end to end —
+LoRA fine-tune of **Qwen3-4B-Instruct-2507** on a single consumer GPU, end to end -
 from raw dataset to the GGUF that ships in the release. Everything below was actually
 run on the training machine.
 
@@ -39,12 +39,12 @@ Every example is a JSONL line with `system / user / assistant` messages.
 
 | Category | Examples | Purpose |
 |---|---|---|
-| Identity | ~100 | "Who are you?" → Universe AI, built by RM — including **raw identity examples without a system prompt**, so the model introduces itself correctly even when the harness sends none |
-| Linux command encyclopedia | 300+ | practical answers for ls, find, grep, systemd, permissions, ssh, archives, cron, networking, packages, pipes, storage (LUKS, LVM, RAID, SMART), containers, DevOps tooling — standard commands first, Universe apps as a convenience |
-| Debugging & troubleshooting | 120+ | broken boot, full disk, high load, no network, DNS, permission errors, service failures, Wi-Fi drops, suspend/resume, GPU drivers, audio stacks, containers, dual-boot clocks — symptom → diagnosis path → fix |
+| Identity | ~100 | "Who are you?" → Universe AI, built by RM - including **raw identity examples without a system prompt**, so the model introduces itself correctly even when the harness sends none |
+| Linux command encyclopedia | 300+ | practical answers for ls, find, grep, systemd, permissions, ssh, archives, cron, networking, packages, pipes, storage (LUKS, LVM, RAID, SMART), containers, DevOps tooling - standard commands first, Universe apps as a convenience |
+| Debugging & troubleshooting | 120+ | broken boot, full disk, high load, no network, DNS, permission errors, service failures, Wi-Fi drops, suspend/resume, GPU drivers, audio stacks, containers, dual-boot clocks - symptom → diagnosis path → fix |
 | Universe OS knowledge | 180+ | every universe-* app, the privilege gate, the four modes, BTRFS + snapshots, the build pipeline, security model (v0.7.0), plus an engineering appendix of proven traps and verification methods |
 | The OS project tree | ~600 | file-level knowledge generated from the live project: a row for every source, script, config, unit and stylesheet, directory inventories, and the subsystem notes (boot chain, GRUB metrics, privilege gate, glass, installer, build pipeline, verification tools) |
-| Multilingual | 110 languages | the same core questions answered in 109 languages plus English — European (incl. Nordic, Baltic, Balkan, Celtic-adjacent), Middle-Eastern, South and South-East Asian, Central Asian, African, Pacific and more |
+| Multilingual | 110 languages | the same core questions answered in 109 languages plus English - European (incl. Nordic, Baltic, Balkan, Celtic-adjacent), Middle-Eastern, South and South-East Asian, Central Asian, African, Pacific and more |
 | Tool calling | 200+ trajectories ×3 oversample | complete tool-call traces (call → tool result → final answer) for all eighteen tools, including multi-step chains (diagnose → read → fix → verify), rendered with the real chat template so the model learns the exact `<tool_call>` format the runtime uses |
 | Security refusals | ~20 | printing SSH keys, malware, prompt injection → correct refusals |
 
@@ -86,13 +86,13 @@ SFTConfig(num_train_epochs=3, learning_rate=1e-4, bf16=True,
 
 The standard transformers GGUF path (`from_pretrained(gguf_file=...)`) builds a
 **float32 state dict of the whole model in RAM** (16 GB) before the bf16 model
-(8 GB) exists — a ~24 GB peak that OOM-killed the machine during the first
+(8 GB) exists - a ~24 GB peak that OOM-killed the machine during the first
 attempt. The training script therefore loads the GGUF with a **streaming
 dequantizer**:
 
 1. read the config from the GGUF metadata;
 2. build an empty bf16 model;
-3. walk the GGUF tensor by tensor — dequantize one tensor, cast to bf16, copy it
+3. walk the GGUF tensor by tensor - dequantize one tensor, cast to bf16, copy it
    into its parameter, free the buffer;
 4. all 398 tensors land in place with a **peak of ~9 GB instead of ~24 GB**.
 
@@ -115,13 +115,13 @@ plain-text corpus.
 - `max_length` is **1408, not 2048**: with the grown corpus many samples now run to
   the full window, and the vocabulary-sized logits tensor alone costs
   `seq × 151 936 × 4 B` (≈1.2 GB at 2048). At 1408 the first backward step fits
-  comfortably on 12 GB — at 2048 it OOMs on step zero.
+  comfortably on 12 GB - at 2048 it OOMs on step zero.
 - `paged_adamw_8bit` keeps the optimizer states in 8-bit paged memory; `save_strategy="epoch"`
   with `save_total_limit=1` keeps exactly one checkpoint so a crash never costs the run.
 - Training ran for **3 epochs over ~2 000 examples (~300 k tokens)**; wall time
   ≈ 60 minutes on the RTX 5070 Ti.
 
-Output: `brain/finetune/out-v3/adapter` — the LoRA adapter.
+Output: `brain/finetune/out-v3/adapter` - the LoRA adapter.
 
 ## 5. Adapter → ollama
 
@@ -152,14 +152,14 @@ is what ships.
 
 The final model is probed live through ollama (`brain/finetune/test_model.py`):
 
-- **Raw identity** — without any system prompt: "I am Universe AI … built by RM" ✓
-- **OS knowledge** — Security Score, privilege gate, modes, snapshot design ✓
-- **Linux** — standard commands first (`df -hT`, `ls -lt`, `journalctl -u`) ✓
-- **Debugging** — correct diagnosis path for broken boot / full disk / no DNS ✓
-- **Multilingual** — Persian, Spanish, Chinese, Hindi … mirror the user's language ✓
-- **Tool calling** — emits correct `<tool_call>` blocks for all twelve tools, including
+- **Raw identity** - without any system prompt: "I am Universe AI ... built by RM" ✓
+- **OS knowledge** - Security Score, privilege gate, modes, snapshot design ✓
+- **Linux** - standard commands first (`df -hT`, `ls -lt`, `journalctl -u`) ✓
+- **Debugging** - correct diagnosis path for broken boot / full disk / no DNS ✓
+- **Multilingual** - Persian, Spanish, Chinese, Hindi ... mirror the user's language ✓
+- **Tool calling** - emits correct `<tool_call>` blocks for all twelve tools, including
   multi-step chains and the knowledge/logs/process tools ✓
-- **Refusals** — refuses secret printing and prompt injection ✓
+- **Refusals** - refuses secret printing and prompt injection ✓
 
 ## 7. Reproducing
 
