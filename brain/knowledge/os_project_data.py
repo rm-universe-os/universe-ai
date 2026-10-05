@@ -328,6 +328,14 @@ def persian_ratio(s):
         return 1.0
     return len(PERSIAN.findall(s)) / max(len(s), 1)
 
+GLYPHS = (("\u2014", "-"), ("\u2013", "-"), ("\u2018", "'"), ("\u2019", "'"),
+          ("\u201c", '"'), ("\u201d", '"'), ("\u2026", "..."), ("\u2192", "->"))
+
+def norm(s):
+    for a, b in GLYPHS:
+        s = s.replace(a, b)
+    return s
+
 doc_count = 0
 seen_titles = set()
 for doc in DOCS:
@@ -352,8 +360,8 @@ for doc in DOCS:
         if key in seen_titles:
             continue
         seen_titles.add(key)
-        body = body[:1400]
-        add("From the Universe OS %s: explain %s." % (base, title), body)
+        body = norm(body[:1400])
+        add("From the Universe OS %s: explain %s." % (base, norm(title)), body)
         doc_count += 1
 
 KB = os.path.join(HERE, "universe-os-knowledge.md")

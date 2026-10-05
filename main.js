@@ -83,7 +83,7 @@ const DEFAULTS = {
     modelUrl: process.env.UAI_MODEL_URL || "https://github.com/rm-universe-os/universe-ai/releases/latest/download/universe-ai-model.tar.zst",
     runtimeUrl: process.env.UAI_RUNTIME_URL || "https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tar.zst",
     baseSha256: "85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9",
-    adapterSha256: "4397218ecd52f0c1cccb078a7ff1c7fcdc3ba61a3ea8d2ccb3ac3a8038ad9857"
+    adapterSha256: "a249bf0c4627c9f4a89afb537c3301648d5e2f4e60800c28c045ba357e8de09c"
 };
 const UAI_DIR = process.env.UAI_TEST ? "/tmp/uai-test-data" : path.join(HOME, ".local", "share", "universe-ai");
 const RUNTIME_DIR = path.join(UAI_DIR, "runtime");
@@ -4330,6 +4330,35 @@ app.whenReady().then(async () => {
                     console.log("[chatprobe-ERR]", e.message);
                     app.exit(1)
                 })
+            }, parseInt(process.env.UAI_PROBE_DELAY || "3000", 10))
+        }, 500)
+    }
+    if (process.env.UAI_CHATPROBE_SEND) {
+        setTimeout(() => {
+            createChat();
+            const question = String(process.env.UAI_CHATPROBE_SEND);
+            setTimeout(() => {
+                const startLen = history.length;
+                const started = Date.now();
+                const waitMs = parseInt(process.env.UAI_CHATPROBE_WAIT || "120000", 10);
+                chat.webContents.executeJavaScript("ipcRenderer.send('chat-send', {text: " + JSON.stringify(question) + "}); 'sent'").catch(() => {});
+                const timer = setInterval(() => {
+                    const got = history.length > startLen && history.slice(startLen).some(m => m.role === "assistant");
+                    if (got || Date.now() - started > waitMs) {
+                        clearInterval(timer);
+                        setTimeout(() => {
+                            chat.webContents.capturePage().then(img => {
+                                fs.writeFileSync("/tmp/uai-chat-answer.png", img.toPNG());
+                                const last = history.filter(m => m.role === "assistant" && !/^\(used /.test(m.content || "")).slice(-1)[0];
+                                console.log("[chatprobe-send] ANSWER:", JSON.stringify((last && last.content || "").slice(0, 2400)));
+                                app.exit(0)
+                            }).catch(e => {
+                                console.log("[chatprobe-send-ERR]", e.message);
+                                app.exit(1)
+                            })
+                        }, 1200)
+                    }
+                }, 1200)
             }, parseInt(process.env.UAI_PROBE_DELAY || "3000", 10))
         }, 500)
     }

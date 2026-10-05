@@ -247,7 +247,7 @@ def dispatch(name, args):
         return edit_file(str(args.get("path", "")), str(args.get("content", "")))
     return f"unknown tool: {name}"
 
-SYSTEM = (
+_SYSTEM_FALLBACK = (
     "You are Universe AI, the resident assistant of Universe OS - a Linux distribution built on the "
     "Linux kernel, GNOME Shell, Wayland, Flatpak and strict security / access-control policies. "
     "Always reply in the SAME LANGUAGE the user writes in. Be concise, warm and practical. "
@@ -255,10 +255,23 @@ SYSTEM = (
     "summarize after tool output."
 )
 
+def _load_system():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "knowledge", "ollama", "system.txt")
+    try:
+        text = open(path, encoding="utf-8").read().strip()
+        if text:
+            return text
+    except OSError:
+        pass
+    return _SYSTEM_FALLBACK
+
+SYSTEM = _load_system()
+
 def chat(base_url, model, messages):
     body = json.dumps({
         "model": model, "messages": messages, "stream": False,
-        "tools": TOOLS,
+        "tools": TOOLS, "keep_alive": "30m",
         "options": {"temperature": 0.4, "num_ctx": 16384},
     }).encode()
     req = urllib.request.Request(base_url.rstrip("/") + "/api/chat", data=body,
