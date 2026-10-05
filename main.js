@@ -521,6 +521,10 @@ async function toggleChat() {
         return
     }
     if (!(await ollamaAlive() && await modelInstalled())) {
+        if (await ensureLocalRuntime() && await modelInstalled()) {
+            createChat();
+            return
+        }
         runSetupFlow();
         return
     }
@@ -3655,6 +3659,17 @@ function spawnLocalServe() {
         }, 500)
     })
 }
+async function ensureLocalRuntime() {
+    try {
+        if (await ollamaAlive()) return true;
+        const localBin = path.join(RUNTIME_DIR, "bin", "ollama");
+        if (!fs.existsSync(localBin)) return false;
+        await spawnLocalServe();
+        return await ollamaAlive()
+    } catch (_) {
+        return false
+    }
+}
 async function downloadOnce(url, dest, label) {
     const STALL_MS = 12e4;
     let offset = 0;
@@ -3993,11 +4008,24 @@ async function setupPipeline() {
         msg: "Prerequisites ready \u2713",
         done: true
     });
-    setupEmit("phase", {
-        phase: 2,
-        msg: "Downloading the Universe AI model..."
-    });
-    const base = config.modelUrl;
+    const modelReady = !process.env.UAI_FORCE_MODEL && fs.existsSync(modelManifestPath(storeRoot()));
+    if (modelReady) {
+        setupEmit("phase", {
+            phase: 2,
+            msg: "Model already installed",
+            done: true
+        });
+        setupEmit("phase", {
+            phase: 3,
+            msg: "Model ready",
+            done: true
+        })
+    } else {
+        setupEmit("phase", {
+            phase: 2,
+            msg: "Downloading the Universe AI model..."
+        });
+        const base = config.modelUrl;
     const parts = [];
     let i = 0;
     for (;;) {
@@ -4101,7 +4129,8 @@ async function setupPipeline() {
         phase: 3,
         msg: "Model installed \u2713",
         done: true
-    });
+    })
+    }
     setupEmit("phase", {
         phase: 4,
         msg: "Starting the model engine..."
@@ -4203,7 +4232,7 @@ app.whenReady().then(async () => {
     createPet();
     buildTray();
     startHttp();
-    ensureModelFresh();
+    ensureLocalRuntime().then(() => ensureModelFresh()).catch(() => {});
     startCinemaWatch();
     watchSystemMode();
     if (process.env.UAI_CINEMA_FORCE) {
