@@ -3,7 +3,7 @@
 set -e
 echo "== [1/4] NVIDIA userland + modules =="
 bash /tmp/opencode/install-nvidia-full.sh
-echo "== [2/4] CUDA python deps (bitsandbytes needs libcuda — installed above) =="
+echo "== [2/4] CUDA python deps (bitsandbytes needs libcuda - installed above) =="
 '" + os.path.expanduser("~") + "'/uai-venv/bin/pip install --no-cache-dir --resume-retries 10 "transformers==4.51.3" "trl==0.17.0" "peft==0.15.2" "accelerate==1.6.0" "datasets==3.5.0" "bitsandbytes==0.45.5"
 echo "== [3/4] GPU check =="
 nvidia-smi

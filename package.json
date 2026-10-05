@@ -2,7 +2,7 @@
   "name": "universe-ai",
   "productName": "Universe AI",
   "version": "1.0.0",
-  "description": "Universe AI — a living 3D black-hole desktop agent for Universe OS",
+  "description": "Universe AI - a living 3D black-hole desktop agent for Universe OS",
   "main": "main.js",
   "scripts": {
     "start": "electron . --no-sandbox"

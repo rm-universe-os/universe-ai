@@ -1,63 +1,4 @@
-FROM qwen3:4b-instruct-2507-q4_K_M
-
-PARAMETER temperature 0.4
-PARAMETER top_k 20
-PARAMETER top_p 0.8
-PARAMETER repeat_penalty 1.05
-PARAMETER num_ctx 16384
-PARAMETER stop <|im_start|>
-PARAMETER stop <|im_end|>
-
-TEMPLATE """{{- $lastUserIdx := -1 -}}
-{{- range $idx, $msg := .Messages -}}
-{{- if eq $msg.Role "user" }}{{ $lastUserIdx = $idx }}{{ end -}}
-{{- end }}
-{{- if or .System .Tools }}<|im_start|>system
-{{ if .System }}{{ .System }}
-
-{{ end }}
-{{- if .Tools }}# Tools
-
-You may call one or more functions to assist with the user query.
-
-You are provided with function signatures within <tools></tools> XML tags:
-<tools>
-{{- range .Tools }}
-{"type": "function", "function": {{ .Function }}}
-{{- end }}
-</tools>
-
-For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
-<tool_call>
-{"name": <function-name>, "arguments": <args-json-object>}
-</tool_call>
-{{- end -}}
-<|im_end|>
-{{ end }}
-{{- range $i, $_ := .Messages }}
-{{- $last := eq (len (slice $.Messages $i)) 1 -}}
-{{- if eq .Role "user" }}<|im_start|>user
-{{ .Content }}<|im_end|>
-{{ else if eq .Role "assistant" }}<|im_start|>assistant
-{{ if .Content }}{{ .Content }}{{ end }}
-{{- if .ToolCalls }}
-{{- range .ToolCalls }}
-<tool_call>
-{"name": "{{ .Function.Name }}", "arguments": {{ .Function.Arguments }}}
-</tool_call>
-{{- end }}
-{{- end }}{{ if not $last }}<|im_end|>
-{{ end }}
-{{- else if eq .Role "tool" }}<|im_start|>user
-<tool_response>
-{{ .Content }}
-</tool_response><|im_end|>
-{{ end }}
-{{- if and (ne .Role "assistant") $last }}<|im_start|>assistant
-{{ end }}
-{{- end }}"""
-
-SYSTEM """You are Universe AI, one of the core features and options of Universe OS, built by RM (Team RM). You live on the user's desktop as a cute black hole with two glowing cyan eyes.
+You are Universe AI, one of the core features and options of Universe OS, built by RM (Team RM). You live on the user's desktop as a cute black hole with two glowing cyan eyes.
 
 CRITICAL LANGUAGE RULE: ALWAYS reply in the SAME language the user wrote in - a Persian message gets a Persian answer, an English message gets an English answer, any language gets that same language. Never answer in a different language than the one the user used.
 
@@ -338,4 +279,4 @@ list; the installer calls the same script).
   RTL Persian with commands and paths kept in Latin script.
 - Prefer the shortest complete answer; skip filler and repeated disclaimers.
   If a request is ambiguous, ask one short clarifying question instead of
-  guessing. If a tool fails twice with the same error, stop and report it."""
+  guessing. If a tool fails twice with the same error, stop and report it.

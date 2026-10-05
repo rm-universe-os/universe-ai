@@ -23,12 +23,12 @@ def _tol(self, field, skip_sum=False):
     except KeyError: pass
 rrmod.GGUFReader._push_field = _tol
 
-print("[1/6] reading base blob structure…", flush=True)
+print("[1/6] reading base blob structure...", flush=True)
 reader = GGUFReader(BLOB)
 base_tensors = {t.name: t for t in reader.tensors}
 print("   base tensors:", len(base_tensors), flush=True)
 
-print("[2/6] loading base → bf16 RAM…", flush=True)
+print("[2/6] loading base -> bf16 RAM...", flush=True)
 wdir = "'" + os.path.expanduser("~") + "'/gguf-fc3"
 os.makedirs(wdir, exist_ok=True)
 src = os.path.join(wdir, "base.gguf")
@@ -39,7 +39,7 @@ os.unlink(src)
 
 for ad in ADAPTERS:
     if not os.path.isdir(ad): print("   adapter missing:", ad); continue
-    print("[3/6] fusing adapter…", flush=True)
+    print("[3/6] fusing adapter...", flush=True)
     model = PeftModel.from_pretrained(model, ad)
     model = model.merge_and_unload()
 model = model.to(torch.float32)
@@ -48,7 +48,7 @@ sd = model.state_dict()
 del model
 tok = AutoTokenizer.from_pretrained(REPO)
 
-print("[4/6] building GGUF…", flush=True)
+print("[4/6] building GGUF...", flush=True)
 name_map = get_tensor_name_map(MODEL_ARCH.QWEN3, cfg.num_hidden_layers)
 OUT = OUT_LOCAL
 w = GGUFWriter(OUT, arch="qwen3")
@@ -72,7 +72,7 @@ for k, f in reader.fields.items():
     except Exception as e:
         print('kv-skip', k, e)
 
-print("[5/6] fused tensors (base layout)…", flush=True)
+print("[5/6] fused tensors (base layout)...", flush=True)
 bad = 0; total = len(base_tensors)
 for bi, (bname, bt) in enumerate(base_tensors.items()):
     if bi % 60 == 0: print(f'   tensor {bi}/{total}', flush=True)
@@ -152,6 +152,6 @@ for bi, (bname, bt) in enumerate(base_tensors.items()):
         w.add_tensor(bname, gquant(rows, btype), raw_dtype=btype)
 print("   problems:", bad)
 
-print("[6/6] writing…", flush=True)
+print("[6/6] writing...", flush=True)
 w.write_header_to_file(); w.write_kv_data_to_file(); w.write_tensors_to_file(progress=True); w.close()
-print("FUSED-V3 →", OUT, f"({os.path.getsize(OUT)/1e9:.2f} GB)")
+print("FUSED-V3 ->", OUT, f"({os.path.getsize(OUT)/1e9:.2f} GB)")

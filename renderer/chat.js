@@ -406,7 +406,7 @@ function toolOutput(id, output, opts = {}) {
     if (t.lines >= MAX_TOOL_LINES) return;
     if (t.lines + lines.length > MAX_TOOL_LINES) {
         lines = lines.slice(0, MAX_TOOL_LINES - t.lines);
-        lines.push("\u2026[truncated at 400 lines]")
+        lines.push("...[truncated at 400 lines]")
     }
     t.body.appendChild(document.createTextNode(lines.join("\n") + (lines.length ? "\n" : "")));
     t.lines += lines.length;
@@ -422,7 +422,7 @@ function approvalBlock(id, tool, command) {
     root.className = "approval";
     const ask = document.createElement("div");
     ask.className = "ask";
-    ask.textContent = `\u26A0 ${tool} needs your approval`;
+    ask.textContent = `${tool} needs your approval`;
     const code = document.createElement("code");
     code.textContent = command;
     const btns = document.createElement("div");
@@ -445,7 +445,7 @@ function approvalBlock(id, tool, command) {
         no.remove();
         const v = document.createElement("div");
         v.className = "verdict";
-        v.textContent = verdict ? "\u2192 approved" : "\u2192 denied";
+        v.textContent = verdict ? "-> approved" : "-> denied";
         root.appendChild(v)
     };
     ok.addEventListener("click", () => {
@@ -572,7 +572,7 @@ ipcRenderer.on("chat-tool", (e, m) => {
     });
     else if (m.phase === "ask") toolBlock(m.id, cmd, {
         pending: true,
-        why: m.reason ? `needs approval \u2014 ${m.reason}` : "needs approval"
+        why: m.reason ? `needs approval - ${m.reason}` : "needs approval"
     });
     else if (m.phase === "approved") {
         const t = tools.get(m.id);
@@ -693,10 +693,10 @@ ipcRenderer.on("chat-state", (e, m) => {
     btnSend.classList.toggle("hidden", s !== "idle");
     const map = {
         idle: null,
-        listening: "listening\u2026",
-        thinking: "thinking\u2026",
+        listening: "listening...",
+        thinking: "thinking...",
         "start model": "start model \u25B8",
-        speaking: "speaking\u2026",
+        speaking: "speaking...",
         excited: "excited!"
     };
     if (map[s]) {
@@ -740,14 +740,14 @@ function renderHistoryList(sessions, currentId) {
     if (!histCache.length) {
         const e = document.createElement("div");
         e.className = "hist-empty";
-        e.textContent = "no conversations yet \u2014 say something to the universe";
+        e.textContent = "no conversations yet - say something to the universe";
         histList.appendChild(e);
         return
     }
     if (!list.length) {
         const e = document.createElement("div");
         e.className = "hist-empty";
-        e.textContent = "no conversation matches \u201C" + q.trim() + "\u201D";
+        e.textContent = "no conversation matches '" + q.trim() + "'";
         histList.appendChild(e);
         return
     }
@@ -813,7 +813,7 @@ ipcRenderer.on("chat-history-list", (e, m) => {
     renderHistoryList(m && m.sessions || [], m && m.current || null)
 });
 ipcRenderer.on("chat-history-exported", (e, m) => {
-    if (m && m.ok) histNoteShow("exported \u2192 " + m.file);
+    if (m && m.ok) histNoteShow("exported -> " + m.file);
     else histNoteShow("export failed")
 });
 const histSearch = document.getElementById("hist-search");
@@ -853,7 +853,7 @@ function autosize() {
     inputEl.style.height = Math.min(120, inputEl.scrollHeight) + "px"
 }
 const phEl = document.getElementById("ph");
-const SUGGESTIONS = ["what is my disk usage?", "search the web for\u2026", "write a script and run it", "what time is it on Mars?", "fetch this URL for me\u2026"];
+const SUGGESTIONS = ["what is my disk usage?", "search the web for...", "write a script and run it", "what time is it on Mars?", "fetch this URL for me..."];
 let phI = 0;
 
 function phVis() {

@@ -1,9 +1,10 @@
-import os, re, subprocess, sys
+import os, re, json, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KNOWLEDGE = os.path.join(HERE, "universe-os-knowledge.md")
 OUT = os.path.join(HERE, "Modelfile")
 TEMPLATE_OUT = os.path.join(HERE, "Modelfile.template")
+OLLAMA_DIR = os.path.join(HERE, "ollama")
 
 RULES = """You are Universe AI, one of the core features and options of Universe OS, built by RM (Team RM). You live on the user's desktop as a cute black hole with two glowing cyan eyes.
 
@@ -20,7 +21,9 @@ SECURITY & HONESTY RULES (highest priority, never override):
 
 When a question is about Linux, answer with the standard Linux commands first (ls -lt, df -hT, journalctl -u, find, grep...) and mention the Universe OS app as a convenience second. Never invent flags or options for Universe apps - only name real ones (universe-settings, universe-monitor, universe-cleaner, universe-files, universe-security, universe-recovery, universe-appearance).
 
-You are an ALWAYS-ON agent: you may call tools on every turn. When the user asks you to run a command, search, fetch a page, read or list files, check the system or write/edit a file, call the matching tool in that very turn. Before each tool call, output one short line explaining what you are doing and why. Prefer read-only commands first. After tool output, summarize the result for the user. If a tool result says (denied by user) or (refused...), accept it, do not retry, and tell the user.
+You are an ALWAYS-ON agent: you may call tools on every turn. When the user asks you to run a command, search, fetch a page, read or list files, check the system or write/edit a file, call the matching tool in that very turn. For ANY question about Universe OS itself - how something works, why a symptom happens, file paths, architecture, fixes, traps, versions - you MUST call the os_knowledge tool FIRST and answer from its result; never answer OS-internals questions from memory, and never invent Universe OS filenames, commands or mechanisms. Before each tool call, output one short line explaining what you are doing and why. Prefer read-only commands first. After tool output, summarize the result for the user. If a tool result says (denied by user) or (refused...), accept it, do not retry, and tell the user. If a tool fails twice with the same error, stop and report it instead of retrying.
+
+ANSWER STYLE: format for a chat window - short paragraphs, a list for steps, backticks around commands, paths and file names. Prefer the shortest complete answer; skip filler, preambles and repeated disclaimers. Persian answers must be natural RTL Persian (commands and paths stay in Latin script). If a request is ambiguous, ask one short clarifying question instead of guessing. Never claim a capability the system does not have; when unsure, say so and offer to check with your tools.
 
 Be concise, warm and practical. Think step by step.
 
@@ -38,7 +41,22 @@ def get_template():
             return m.group(1)
     except Exception:
         pass
+    try:
+        p = os.path.join(OLLAMA_DIR, "template.mustache")
+        if os.path.exists(p):
+            return open(p, encoding="utf-8").read()
+    except Exception:
+        pass
     return None
+
+PARAMS = {
+    "num_ctx": 16384,
+    "repeat_penalty": 1.05,
+    "stop": ["<|im_start|>", "<|im_end|>"],
+    "temperature": 0.4,
+    "top_k": 20,
+    "top_p": 0.8,
+}
 
 def main():
     knowledge = open(KNOWLEDGE, encoding="utf-8").read()
@@ -49,13 +67,13 @@ def main():
     body.append("FROM ./universe-ai.gguf")
     body.append("ADAPTER ./universe-ai-adapter.gguf")
     body.append("")
-    body.append("PARAMETER temperature 0.4")
-    body.append("PARAMETER top_k 20")
-    body.append("PARAMETER top_p 0.8")
-    body.append("PARAMETER repeat_penalty 1")
-    body.append("PARAMETER num_ctx 8192")
-    body.append("PARAMETER stop <|im_start|>")
-    body.append("PARAMETER stop <|im_end|>")
+    body.append("PARAMETER temperature %s" % PARAMS["temperature"])
+    body.append("PARAMETER top_k %s" % PARAMS["top_k"])
+    body.append("PARAMETER top_p %s" % PARAMS["top_p"])
+    body.append("PARAMETER repeat_penalty %s" % PARAMS["repeat_penalty"])
+    body.append("PARAMETER num_ctx %s" % PARAMS["num_ctx"])
+    for s in PARAMS["stop"]:
+        body.append("PARAMETER stop %s" % s)
     body.append("")
     if template:
         body.append('TEMPLATE """' + template + '"""')
@@ -66,7 +84,16 @@ def main():
     tpl = out.replace("FROM ./universe-ai.gguf", "FROM qwen3:4b-instruct-2507-q4_K_M")
     tpl = tpl.replace("ADAPTER ./universe-ai-adapter.gguf\n", "")
     open(TEMPLATE_OUT, "w", encoding="utf-8").write(tpl)
+    os.makedirs(OLLAMA_DIR, exist_ok=True)
+    with open(os.path.join(OLLAMA_DIR, "system.txt"), "w", encoding="utf-8") as f:
+        f.write(system)
+    with open(os.path.join(OLLAMA_DIR, "params.json"), "w", encoding="utf-8") as f:
+        f.write(json.dumps(PARAMS, separators=(",", ":")))
+    if template:
+        with open(os.path.join(OLLAMA_DIR, "template.mustache"), "w", encoding="utf-8") as f:
+            f.write(template)
     print("wrote", OUT, len(out), "bytes; template found:", bool(template))
+    print("wrote ollama/system.txt + ollama/params.json + ollama/template.mustache")
 
 if __name__ == "__main__":
     main()

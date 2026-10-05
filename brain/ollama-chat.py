@@ -142,7 +142,7 @@ def run_command(command: str) -> str:
         return f"(refused by safety policy: {reason})"
     if verdict == "ask":
         try:
-            ans = input(f"{YELLOW}⚠ approve? {command}{RESET} [y/N] ").strip().lower()
+            ans = input(f"{YELLOW}approve? {command}{RESET} [y/N] ").strip().lower()
         except EOFError:
             ans = "n"
         if ans not in ("y", "yes"):
@@ -153,7 +153,7 @@ def run_command(command: str) -> str:
                            capture_output=True, text=True, timeout=30)
         out = (p.stdout or "") + (("[stderr]\n" if p.stdout else "") + p.stderr if p.stderr else "")
         if len(out) > 6000:
-            out = out[:6000] + "\n…[truncated]"
+            out = out[:6000] + "\n...[truncated]"
         out += f"\n[exit code {p.returncode}]"
         return out or "(no output)"
     except subprocess.TimeoutExpired:
@@ -210,7 +210,7 @@ def fetch_url(url: str) -> str:
     body = re.sub(r"[ \t]+", " ", body)
     body = re.sub(r"\n\s*\n+", "\n", body).strip()
     if len(body) > 12000:
-        body = body[:12000] + "\n…[truncated]"
+        body = body[:12000] + "\n...[truncated]"
     return body or "(empty page)"
 
 def edit_file(path: str, content: str) -> str:
@@ -228,7 +228,7 @@ def edit_file(path: str, content: str) -> str:
         return "refused: shell-startup or session files are protected"
     if os.path.islink(real) or os.path.islink(os.path.dirname(p)):
         return "refused: target is a symlink"
-    ans = input(f"{YELLOW}⚠ approve writing {real} ({len(content)} bytes)?{RESET} [y/N] ").strip().lower()
+    ans = input(f"{YELLOW}approve writing {real} ({len(content)} bytes)?{RESET} [y/N] ").strip().lower()
     if ans not in ("y", "yes"):
         return "(denied by user)"
     os.makedirs(os.path.dirname(real), exist_ok=True)
@@ -248,7 +248,7 @@ def dispatch(name, args):
     return f"unknown tool: {name}"
 
 SYSTEM = (
-    "You are Universe AI, the resident assistant of Universe OS — a Linux distribution built on the "
+    "You are Universe AI, the resident assistant of Universe OS - a Linux distribution built on the "
     "Linux kernel, GNOME Shell, Wayland, Flatpak and strict security / access-control policies. "
     "Always reply in the SAME LANGUAGE the user writes in. Be concise, warm and practical. "
     "You are an always-on agent: explain briefly before each tool call, prefer read-only commands, "
@@ -307,7 +307,7 @@ def main():
                     targs = {}
                 print(f"{GREEN}⏺ {name}{RESET} {json.dumps(targs, ensure_ascii=False)[:200]}")
                 result = dispatch(name, targs)
-                preview = result if len(result) <= 800 else result[:800] + " …[truncated]"
+                preview = result if len(result) <= 800 else result[:800] + " ...[truncated]"
                 print(f"{DIM}{preview}{RESET}")
                 messages.append({"role": "tool", "tool_name": name, "content": result})
         print(f"{RED}(tool budget exhausted){RESET}")
@@ -315,7 +315,7 @@ def main():
     if args.prompt:
         turn(" ".join(args.prompt))
         return
-    print(f"{DIM}Universe AI terminal bridge — model: [hidden], /quit to exit{RESET}")
+    print(f"{DIM}Universe AI terminal bridge - model: [hidden], /quit to exit{RESET}")
     while True:
         try:
             line = input(f"{GREEN}❯{RESET} ").strip()

@@ -20,17 +20,17 @@ os.makedirs(GGUF_DIR2, exist_ok=True)
 if not os.path.exists(GGUF):
     shutil.copyfile(BLOB, GGUF)
 
-print("[1/4] loading base GGUF → bf16 RAM…", flush=True)
+print("[1/4] loading base GGUF -> bf16 RAM...", flush=True)
 model = AutoModelForCausalLM.from_pretrained(GGUF_DIR2, gguf_file="universe-ai.gguf", torch_dtype=torch.bfloat16)
 shutil.rmtree(GGUF_DIR2, ignore_errors=True)
 
-print("[2/4] applying LoRA adapter…", flush=True)
+print("[2/4] applying LoRA adapter...", flush=True)
 model = PeftModel.from_pretrained(model, ADAPTER)
-print("[3/4] merging…", flush=True)
+print("[3/4] merging...", flush=True)
 model = model.merge_and_unload()
 
-print("[4/4] saving merged model to flash (sharded 2GB)…", flush=True)
+print("[4/4] saving merged model to flash (sharded 2GB)...", flush=True)
 model.save_pretrained(OUT, safe_serialization=True, max_shard_size="2GB")
 tok = AutoTokenizer.from_pretrained(REPO)
 tok.save_pretrained(OUT)
-print("MERGED →", OUT)
+print("MERGED ->", OUT)

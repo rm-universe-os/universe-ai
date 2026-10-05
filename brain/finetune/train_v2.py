@@ -21,19 +21,19 @@ os.makedirs(WDIR, exist_ok=True)
 g = "/run/media/kali/MM/universe-ai-fused-final.gguf"
 
 tok = AutoTokenizer.from_pretrained(REPO)
-print("[1/4] loading fused GGUF (bf16 RAM)…", flush=True)
+print("[1/4] loading fused GGUF (bf16 RAM)...", flush=True)
 model = AutoModelForCausalLM.from_pretrained("/run/media/kali/MM", gguf_file="universe-ai-fused-final.gguf", torch_dtype=torch.bfloat16)
 model = model.to("cuda")
 model.config.use_cache = False
 model.enable_input_require_grads()
 
-print("[2/4] LoRA…", flush=True)
+print("[2/4] LoRA...", flush=True)
 model = get_peft_model(model, LoraConfig(
     r=32, lora_alpha=64, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM",
     target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"]))
 model.print_trainable_parameters()
 
-print("[3/4] dataset…", flush=True)
+print("[3/4] dataset...", flush=True)
 ds = load_dataset("json", data_files=DATA, split="train")
 ds = ds.map(lambda ex: {"text": tok.apply_chat_template(ex["messages"], tokenize=False, add_generation_prompt=False)})
 
@@ -43,10 +43,10 @@ args = SFTConfig(
     logging_steps=2, save_strategy="no", bf16=True, max_length=1024, packing=False,
     report_to=[], dataset_text_field="text", gradient_checkpointing=True)
 
-print("[4/4] training…", flush=True)
+print("[4/4] training...", flush=True)
 trainer = SFTTrainer(model=model, args=args, train_dataset=ds, processing_class=tok)
 trainer.train()
 os.makedirs(OUT, exist_ok=True)
 trainer.model.save_pretrained(OUT)
 tok.save_pretrained(OUT)
-print("ADAPTER_V2 →", OUT)
+print("ADAPTER_V2 ->", OUT)

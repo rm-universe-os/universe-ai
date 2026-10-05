@@ -81,21 +81,14 @@ const mascot = window.UniverseAI.init(canvas, {
     background: false
 
 });
-/* Exposed so the build's screenshot harness can pose the mascot (the cinema
- * props are otherwise only reachable through a real film playing). */
 window.__uaiMascot = mascot;
 
-/* A film started or stopped: glasses on, popcorn out. */
 ipcRenderer.on("cinema", (e, c) => {
-    /* Forwarded to the main process log when UAI_DEBUG is set. */
     console.log("[pet] cinema ipc", JSON.stringify(c),
         "mascot=" + (mascot ? "yes" : "no"));
     if (mascot && mascot.cinema) mascot.cinema(!!(c && c.on));
 });
 
-/* A song started or stopped: headphones on, notes up.  Sent even while a
- * film is playing; the mascot gives the film priority, so nothing here has
- * to know about the other state. */
 ipcRenderer.on("music", (e, m) => {
     console.log("[pet] music ipc", JSON.stringify(m),
         "mascot=" + (mascot ? "yes" : "no"));
@@ -130,17 +123,11 @@ ipcRenderer.on("gaze", (e, g) => {
 });
 ipcRenderer.on("config", (e, c) => {
     if (c && c.eyesFollow === false) feedGaze(0, 0);
-    /* Replayed on every load, because the one-shot `cinema` message is sent
-     * when the film starts - which may be before this window existed. */
     console.log("[pet] config ipc cinema=" + (c && c.cinema),
         "music=" + (c && c.music),
         "mode=" + (c && c.mode), "mascot=" + (mascot ? "yes" : "no"));
     if (c && mascot && mascot.cinema) mascot.cinema(!!c.cinema);
-    /* Replayed for the same reason, and it matters more here: a song is
-     * usually already playing when the desktop comes up. */
     if (c && mascot && mascot.music) mascot.music(!!c.music);
-    /* The mode is replayed here too, so a mascot that starts while the desktop
-     * is already in Developer or Hacker mode is dressed from its first frame. */
     if (c && mascot && mascot.outfit) mascot.outfit(c.mode);
 });
 const speechEl = document.getElementById("speech");
@@ -199,8 +186,6 @@ function pulse() {
 }
 ipcRenderer.on("pulse", () => pulse());
 ipcRenderer.on("perk", () => {
-    /* Hovering the pet used to make the black hole jump. That effect is gone,
-     * so the only reaction left is a blink. */
     if (mascot && mascot.blink) mascot.blink();
 });
 let winDragging = false,

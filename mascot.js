@@ -16,17 +16,37 @@
         return new THREE.CanvasTexture(c);
     }
 
+    function softwareGL() {
+        try {
+            var c = document.createElement("canvas");
+            var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+            if (!gl) return true;
+            var dbg = gl.getExtension("WEBGL_debug_renderer_info");
+            var name = String(dbg ?
+                gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) :
+                gl.getParameter(gl.RENDERER) || "");
+            var lose = gl.getExtension("WEBGL_lose_context");
+            if (lose) lose.loseContext();
+            return /swiftshader|llvmpipe|softpipe|software|mesa offscreen|lavapipe/i
+                .test(name);
+        } catch (e) {
+            return true;
+        }
+    }
+
     function init(canvas, opts) {
         opts = opts || {};
         if (!canvas || canvas.__universeAI || !window.THREE) return null;
         canvas.__universeAI = true;
+        var softGL = opts.softwareGL !== undefined ? !!opts.softwareGL :
+            softwareGL();
         var renderer;
         try {
             renderer = new THREE.WebGLRenderer({
                 canvas,
                 alpha: true,
-                antialias: true,
-                powerPreference: "high-performance"
+                antialias: !softGL,
+                powerPreference: softGL ? "low-power" : "high-performance"
             });
         } catch (e) {
             canvas.style.display = "none";
@@ -34,7 +54,10 @@
         }
         var reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
         var mobile = Math.min(innerWidth, innerHeight) < 760 || matchMedia("(pointer:coarse)").matches;
-        renderer.setPixelRatio(mobile ? 1.5 : Math.min(devicePixelRatio || 1, 2));
+        if (softGL)
+            renderer.setPixelRatio(0.75);
+        else
+            renderer.setPixelRatio(mobile ? 1.5 : Math.min(devicePixelRatio || 1, 2));
         var C = Object.assign({
             core: 132368,
             ring: 6273279,
@@ -78,9 +101,6 @@
                 transparent: true,
                 opacity: 0.95,
                 blending: THREE.AdditiveBlending,
-                /* Light must not write depth. With depthWrite on, this ring
-                 * occluded the eye glow where it crossed it and cut a hard
-                 * straight seam through it. */
                 depthWrite: false
             })
         );
@@ -201,20 +221,12 @@
         });
         var eyeHalos = [];
 
-        /* The eye is a capsule, and these are its real numbers: 0.54 across,
-         * 1.16 tall.  The cinema lenses are built from the same two values
-         * (eye + 10% in length and width), so the glasses and the eyes can
-         * never drift apart again. */
         var EYE_W = 0.54,
             EYE_H = 1.16,
             EYE_R = EYE_W / 2;
 
         function makeEye(x) {
             var e = new THREE.Group();
-            /* The eyeball is a capsule: a cylinder with a sphere capping each
-             * end. From the front it reads as a tall rounded rectangle, which
-             * is the shape this mascot has always had - a plain sphere loses
-             * the character. */
             e.add(new THREE.Mesh(new THREE.CylinderGeometry(EYE_R, EYE_R,
                 EYE_H - 2 * EYE_R, 20), eyeMat));
             var s1 = new THREE.Mesh(new THREE.SphereGeometry(EYE_R, 20, 20), eyeMat);
@@ -223,10 +235,6 @@
             s2.position.y = -(EYE_H / 2 - EYE_R);
             e.add(s1);
             e.add(s2);
-            /* The two glow sprites are depthTest:false on purpose. They are
-             * light, not geometry, and the additive ring in front of them used
-             * to clip them along a hard edge - the "light break" that showed up
-             * as a straight seam across the eye glow. */
             var glow = new THREE.Sprite(new THREE.SpriteMaterial({
                 map: T.eye,
                 color: C.eye,
@@ -276,22 +284,6 @@
         var eL = makeEye(-0.66),
             eR = makeEye(0.66);
 
-        /* ================================================================== *
-         * Cinema props.
-         *
-         * While a film is playing the mascot puts on anaglyph 3D glasses and
-         * holds a box of popcorn.  One kernel every four seconds arcs from
-         * the box up to its mouth, below the glasses, and is swallowed -
-         * eye-squash and a crumb-puff on the bite.  Everything below is
-         * built once, up front, and parked out of frame - nothing is created
-         * or destroyed at runtime, so the first frame of the animation can
-         * never stutter.
-         *
-         * Both props are children of `world`, which is what carries the bob
-         * and the head-turn.  The glasses therefore ride the face and the box
-         * swings with the body, which is what you want from something that is
-         * supposed to be *worn* and *held*.
-         * ================================================================== */
 
         var glassesMats = [],
             popMats = [];
@@ -318,8 +310,6 @@
             return p * p * p;
         }
 
-        /* A rounded rectangle as a THREE.Shape, so the spectacle frames are
-         * real frames with a hole rather than a box with a painted border. */
         function roundedRect(w, h, r) {
             var sh = new THREE.Shape();
             var x = -w / 2,
@@ -352,10 +342,7 @@
             });
         }
 
-        /* The centre of the face: the eyes sit at y 0.42, z 2, and the
-         * glasses float just in front of them. */
         var FACE = new THREE.Vector3(0, 0.42, 2.46);
-        /* Where the glasses wait, off to the upper right, before flying in. */
         var GLASSES_PARK = new THREE.Vector3(0.34, 3.55, 5.10);
 
         var glasses = new THREE.Group();
@@ -363,11 +350,6 @@
         glasses.visible = false;
         world.add(glasses);
 
-        /* depthTest:false + renderOrder on the lenses and frames, on purpose:
-         * the eye glow sprites are also depthTest:false, and without this the
-         * lenses would sit *behind* the mascot's own eye light instead of over
-         * it, which defeats the whole gag.  The temple arms keep normal depth
-         * testing so they still disappear behind the head. */
         function glassMat(m, base) {
             m.depthTest = false;
             mkMat(glassesMats, m, base);
@@ -387,16 +369,6 @@
             color: 0x5b6ca6
         }), 1.0);
 
-        /* Each spectacle is the eye's own silhouette - a tall capsule - sized
-         * 10% bigger than the eye in both length and width, with a slim frame
-         * around it.  The old square lenses were *shorter* than the eye
-         * itself, so the capsule poked out above and below the glass; a lens
-         * that is the eye + 10% covers it with a margin on every side.
-         *
-         * The lens is a flat rounded shape rather than a box: a box has square
-         * corners, and those corners always poked through the rounded frame
-         * hole.  Nothing is drawn inside the glass - an earlier thin rim ring
-         * hugging the lens edge read as a circle floating inside each lens. */
         var LENS_W = EYE_W * 1.1,
             LENS_H = EYE_H * 1.1,
             LENS_R = 0.29,
@@ -435,7 +407,6 @@
             glasses.add(arm);
         });
 
-        /* ---- the popcorn box ---- */
         function stripeTexture() {
             var c = document.createElement("canvas");
             c.width = 256;
@@ -465,8 +436,6 @@
         boxSide.rotation.y = Math.PI / 4;
         popcorn.add(boxSide);
 
-        /* Without an inner shell you see straight through the open box and
-         * the stripes on the far wall read as a mess. */
         var boxInner = new THREE.Mesh(
             new THREE.CylinderGeometry(0.585, 0.425, 0.94, 4, 1, true),
             mkMat(popMats, new THREE.MeshBasicMaterial({
@@ -509,8 +478,6 @@
             var pker = new THREE.Mesh(
                 kernelGeo, kernelMats[pk % kernelMats.length]);
             var py = 0.50 + Math.random() * 0.15;
-            /* The last few sit above the rim - a box that has just been
-             * filled and is about to overflow, not a flat layer of balls. */
             if (pk >= 25) {
                 pa = Math.random() * Math.PI * 2;
                 pr = Math.sqrt(Math.random()) * 0.36;
@@ -522,8 +489,6 @@
             pker.scale.set(0.80 + Math.random() * 0.45,
                 0.72 + Math.random() * 0.40,
                 0.80 + Math.random() * 0.45);
-            /* Two lobes per kernel: the bumpy silhouette is what makes the
-             * shape read as popped corn instead of as a painted ball. */
             for (var lb = 0; lb < 2; lb++) {
                 var lobe = new THREE.Mesh(lobeGeo,
                     kernelMats[(pk + lb + 1) % kernelMats.length]);
@@ -538,8 +503,6 @@
             popcorn.add(pker);
         }
 
-        /* A warm glow sitting over the pile - popcorn, not gravel.  It fades
-         * with the box through popMats and flickers in updateCinema. */
         var popGlow = new THREE.Sprite(new THREE.SpriteMaterial({
             map: T.dot,
             color: 0xffcf7a,
@@ -553,9 +516,6 @@
         mkMat(popMats, popGlow.material, 0.20);
         popcorn.add(popGlow);
 
-        /* Kernels in flight.  Each has its own material so it can fade on its
-         * own; a shared one would fade all of them together.  Each carries a
-         * small warm sprite so the arc reads as a comet, not a pebble. */
         var flyGeo = new THREE.IcosahedronGeometry(0.088, 0);
         var flying = [];
         for (var fk = 0; fk < 5; fk++) {
@@ -590,8 +550,6 @@
             flying.push(fm);
         }
 
-        /* The bite: one crumb-puff sprite, reused by every kernel - only one
-         * kernel is ever swallowed at a time. */
         var crunch = new THREE.Sprite(new THREE.SpriteMaterial({
             map: T.dot,
             color: 0xffe9b8,
@@ -606,72 +564,36 @@
         var crunchT = 0;
         var boxKick = 0;
 
-        /* ================================================================== *
-         * Music props.
-         *
-         * The sibling state: while a song is playing and no film is, the
-         * mascot wears headphones and a run of eighth notes drifts up beside
-         * it.  Same contract as the cinema props above - built once, up
-         * front, parked out of frame, revealed and hidden through a 0..1
-         * `mix`, nothing created or destroyed at runtime - so the first
-         * frame of the animation can never stutter.
-         *
-         * Both are children of `world`, which is what carries the bob and the
-         * head-turn: the band therefore rides the skull and the notes ride
-         * the body, which is what makes them read as coming *off the mascot*
-         * rather than off the window.
-         * ================================================================== */
 
         var musicMats = [];
 
-        /* The head is the body sphere itself: radius 2.05 (see the mesh at
-         * the top of this file).  The band and the cups are measured off
-         * that number, the same way the cinema lenses are measured off
-         * EYE_W/EYE_H, so they cannot drift apart from the skull. */
         var HEAD_R = 2.05;
 
         var phones = new THREE.Group();
         phones.visible = false;
         world.add(phones);
 
-        /* The cups have to be *readable*: this mascot is nearly black, so a
-         * dark cup on a dark head is invisible.  Nothing in this scene is
-         * lit - the eyes, the glasses' frames and the popcorn are all plain
-         * MeshBasicMaterial with a bright colour - so the rim is the same
-         * trick as the eyes: a bright ring, plus a soft additive sprite over
-         * the cup so it glows instead of just being outlined. */
         var bandMat = mkMat(musicMats, new THREE.MeshBasicMaterial({
-            color: 0x4d5b86
+            color: 0x93a7dd
         }), 1.0);
         var cupMat = mkMat(musicMats, new THREE.MeshBasicMaterial({
-            color: 0x2b3350
+            color: 0x3d4a75
         }), 1.0);
         var rimMat = mkMat(musicMats, new THREE.MeshBasicMaterial({
             color: C.ring
         }), 1.0);
 
-        /* The band is a half torus in the XY plane: with an arc of PI it
-         * starts at +X, sweeps over the top and ends at -X, which is exactly
-         * the shape of a headband and needs no rotation to sit right.  Its
-         * radius clears the skull by 0.19 at every point on the arc. */
         phones.add(new THREE.Mesh(
             new THREE.TorusGeometry(HEAD_R + 0.19, 0.105, 10, 64, Math.PI),
             bandMat));
 
-        /* The band sits in the head's own centre plane (the eyes are at
-         * z 2, so z 0.30 is well behind them), where a real pair of cups
-         * would be. */
         phones.position.set(0, 0, 0.30);
 
         var cupGlows = [];
         [-1, 1].forEach(function(sgn) {
             var cup = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.60, 0.54, 0.30, 24), cupMat);
-            /* A cylinder's axis is Y; a quarter turn about Z points it along
-             * X, which is what a cup on the side of a head needs. */
             cup.rotation.z = Math.PI / 2;
-            /* The cup is deliberately sunk 0.1 into the skull: a cup that
-             * only touches the surface reads as floating next to the head. */
             cup.position.set(sgn * (HEAD_R + 0.02), -0.02, 0);
             phones.add(cup);
 
@@ -689,10 +611,6 @@
                 blending: THREE.AdditiveBlending,
                 depthWrite: false
             }));
-            /* depthTest stays on here, unlike the eye glows: those are
-             * allowed to shine through the face, but a cup light that shone
-             * through the back of the skull during a spin would give the
-             * gag away. */
             cglow.position.set(sgn * (HEAD_R + 0.30), -0.02, 0);
             cglow.scale.setScalar(0.95);
             mkMat(musicMats, cglow.material, 0.30);
@@ -700,13 +618,7 @@
             cupGlows.push(cglow);
         });
 
-        /* ---- the notes ---- */
 
-        /* Five eighth notes (a head, a stem, a flag) on staggered phases.
-         * Their whole cycle is driven off the render clock `t` rather than a
-         * per-note timer, which is what keeps them spread out without any
-         * state to reset, and it means the lane needs no allocation at all
-         * once it is built. */
         var NOTE_N = 5;
         var noteHeadGeo = new THREE.SphereGeometry(0.17, 16, 12);
         var noteStemGeo = new THREE.BoxGeometry(0.055, 0.80, 0.055);
@@ -714,15 +626,11 @@
         var notes = [];
         for (var nk = 0; nk < NOTE_N; nk++) {
             var note = new THREE.Group();
-            /* One material for the whole note, so the head and the stem fade
-             * together; the colour alternates between the two blues the rest
-             * of the mascot is already drawn in. */
             var noteMat = mkMat(musicMats, new THREE.MeshBasicMaterial({
                 color: nk % 2 ? C.ring : C.eye,
                 depthWrite: false
             }), 1.0);
             var nhead = new THREE.Mesh(noteHeadGeo, noteMat);
-            /* A note head is an oval, not a ball. */
             nhead.scale.set(1, 0.74, 1);
             note.add(nhead);
             var nstem = new THREE.Mesh(noteStemGeo, noteMat);
@@ -746,10 +654,6 @@
             note.userData = {
                 mat: noteMat,
                 glow: nglow.material,
-                /* The lane: x, z and sway keep the five apart so they read
-                 * as a stream and never merge into one blob.  The nearest
-                 * lane starts outside the skull's own silhouette (x 2.05),
-                 * so no note is ever drawn on top of the face. */
                 x: 2.55 + (nk % 3) * 0.45,
                 z: 0.10 + (nk % 2) * 0.60,
                 sway: 0.13 + 0.09 * (nk % 2),
@@ -764,19 +668,6 @@
             notes.push(note);
         }
 
-        /* ================================================================== *
-         * Mode outfits.
-         *
-         * Developer mode hands the mascot a laptop it types on; Hacker mode
-         * drops the anonymous mask over its face.  Both follow the cinema
-         * contract - built once, parked out of frame, one 0..1 `mix` each - so
-         * the first frame of either animation can never stutter.
-         *
-         * `driveProp` re-targets mid-flight instead of restarting, which is
-         * what lets a film steal the face: the cinema props go up, the outfit
-         * folds itself away, and it walks back on its own when the film ends
-         * because its target never changed.
-         * ================================================================== */
 
         var devOn = false,
             hackOn = false;
@@ -806,18 +697,11 @@
             return m;
         }
 
-        /* The mask keeps normal depth testing.  The cinema glasses can afford
-         * depthTest:false because they are small; the mask is a plate the size
-         * of the face, and with depth testing off it painted over the front of
-         * the accretion ring and cut a clean white wedge out of it. */
         function hackMat(m, base) {
             mkMat(hackMats, m, base === undefined ? 1 : base);
             return m;
         }
 
-        /* A canvas rounded rectangle path - `roundRect` is not in the
-         * 2021 three.js' host Chromium on every build, and this is two
-         * lines either way. */
         function rrect(x, px, py, w, h, r) {
             x.beginPath();
             x.moveTo(px + r, py);
@@ -832,23 +716,14 @@
             x.closePath();
         }
 
-        /* ---------------------------------------------------------------- *
-         * Developer: the laptop.
-         * ---------------------------------------------------------------- */
 
         var LAP_W = 1.94,
             LAP_D = 1.28,
             LAP_H = 1.26;
-        /* Closed lies flat over the deck; open leans just past vertical. */
         var LAP_CLOSED = Math.PI / 2,
             LAP_OPEN = -0.17;
-        /* The machine belongs to the mascot, not to the viewer: the screen
-         * faces the model (so the model is the one coding) and the camera
-         * sees the lid's back.  The yaw is the direction from the laptop to
-         * the sphere's centre - atan2(LAP_HOME.x, LAP_HOME.z) past half a
-         * turn - so it aims at the model rather than merely away. */
-        var LAP_YAW = Math.PI + Math.atan2(1.46, 2.24);
-        var LAP_HOME = new THREE.Vector3(1.46, -1.78, 2.24);
+        var LAP_YAW = Math.PI + Math.atan2(1.34, 2.10);
+        var LAP_HOME = new THREE.Vector3(1.34, -1.46, 2.10);
 
         function keyboardTexture() {
             var W = 256,
@@ -876,7 +751,6 @@
                     x.fillStyle = "#2b3355";
                     rrect(x, kx, ky, kw, kh, 3);
                     x.fill();
-                    /* the violet backlight bleeding out from under the keys */
                     x.fillStyle = "rgba(167,139,250,.34)";
                     rrect(x, kx + 1.2, ky + 1.2, kw - 2.4, kh - 2.4, 2.4);
                     x.fill();
@@ -895,9 +769,6 @@
             return new THREE.CanvasTexture(c);
         }
 
-        /* The screen is a live canvas: a real editor-looking window with
-         * syntax colouring, a highlighted current line, a caret and a slow
-         * scroll.  A shader could do it, but this reads as *code*. */
         var CODE_LINES = [
             "#include <universe.h>",
             "#include <orbit.h>",
@@ -1060,11 +931,6 @@
         lid.add(lapGlow);
         mkMat(devMats, lapGlow.material, 0.30);
 
-        /* Hands of light over the keys.  The mascot has no arms, so they are
-         * little glowing gauntlets that hover and strike - which is what a
-         * being made of light typing would look like.  They are additive, not
-         * solid: as opaque blobs they read as two pink lumps of plastic
-         * dropped on the keyboard. */
         var hands = [];
 
         function makeHand(sgn) {
@@ -1077,7 +943,6 @@
             var palm = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 12), mat);
             palm.scale.set(1, 0.52, 1.30);
             h.add(palm);
-            /* Three fingers, splayed and angled down at the deck. */
             for (var f = -1; f <= 1; f++) {
                 var fin = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 8), mat);
                 fin.position.set(f * 0.072, -0.028, 0.115);
@@ -1085,7 +950,6 @@
                 fin.rotation.x = 0.45;
                 h.add(fin);
             }
-            /* A soft wrist glow instead of an arm. */
             var gl = new THREE.Sprite(new THREE.SpriteMaterial({
                 map: T.eye,
                 color: 0x9d7dff,
@@ -1112,7 +976,6 @@
         makeHand(-1);
         makeHand(1);
 
-        /* Keys lighting up under the fingers. */
         var keyFlashGeo = new THREE.PlaneGeometry(0.20, 0.20);
         var keyFlashes = [];
         for (var kf = 0; kf < 8; kf++) {
@@ -1133,8 +996,6 @@
             keyFlashes.push(kfp);
         }
 
-        /* Glyphs that lift off the screen and sink into the mascot's eyes -
-         * the code is going *in*. */
         var glyphTex = [];
         (function() {
             var chars = ["{ }", "</>", "( )", "=>", "0 1", "[ ]", "#", ";;"];
@@ -1217,7 +1078,6 @@
             laptop.visible = vis;
             if (!vis) return;
             var e = mix;
-            /* Flies in from below-left, spinning, then settles. */
             laptop.position.set(
                 LAP_HOME.x - (1 - e) * 1.7,
                 LAP_HOME.y - (1 - e) * 2.9,
@@ -1230,7 +1090,6 @@
             laptop.position.y += Math.sin(t * 1.6) * 0.012;
             setOpacity(devMats, e);
 
-            /* The lid unfolds only once the machine has landed. */
             var lo = Math.min(Math.max((e - 0.42) / 0.58, 0), 1);
             var le = easeOutCubic(lo);
             lid.rotation.x = LAP_CLOSED + (LAP_OPEN - LAP_CLOSED) * le;
@@ -1240,7 +1099,6 @@
             var booted = lo > 0.55;
             if (booted) drawCode(t);
 
-            /* Typing. */
             var handOn = Math.max(0, (lo - 0.72) / 0.28);
             for (var hi = 0; hi < hands.length; hi++) {
                 var h = hands[hi],
@@ -1321,7 +1179,6 @@
                 if (dp >= 1) du.visible = false;
             }
 
-            /* The code stream. */
             if (booted && e > 0.85) {
                 glyphSpawn -= dt;
                 if (glyphSpawn <= 0) {
@@ -1348,8 +1205,6 @@
                 if (pp >= 1) gp.visible = false;
             }
 
-            /* Reading the code: the whole head tips down-right over the keys
-             * and the eyes dart across the lines. */
             if (mix > 0.55) {
                 var w = (mix - 0.55) / 0.45;
                 tRX = 0.04 + 0.27 * w;
@@ -1360,50 +1215,84 @@
             }
         }
 
-        /* ---------------------------------------------------------------- *
-         * Hacker: the anonymous mask.
-         * ---------------------------------------------------------------- */
 
-        /* It sweeps in from the upper left, assembling out of shards.  Parking
-         * it far forward made it arrive *bigger* than it lands - perspective
-         * alone was worth 1.5x at z +5.6, so the mask read as a giant ghost
-         * for most of the flight. */
         var MASK_PARK = new THREE.Vector3(-2.05, 1.95, 1.35);
-        /* Sized to sit *inside* the head, not over it.
-         *
-         * At 1.10 the plate was as tall as the whole sphere (radius 2.05, so a
-         * 4.1 diameter) and covered it edge to edge: photographed at rest, the
-         * mascot disappeared behind a flat white slab with the accretion ring
-         * cutting across it - "the hacker mask is not good at all".  A mask is
-         * something the head *wears*: the black silhouette has to show around
-         * it, and the eye holes have to land on the eyes.  0.84 of the old
-         * size leaves a rim of head all the way round. */
-        var MASK_SCALE = 0.84;
+        var MASK_SCALE = 1.24;
         var mask = new THREE.Group();
         mask.position.copy(FACE);
         mask.visible = false;
         world.add(mask);
 
+        function circuitTexture() {
+            var W = 512,
+                H = 640;
+            var c = document.createElement("canvas");
+            c.width = W;
+            c.height = H;
+            var x = c.getContext("2d");
+            x.fillStyle = "#ffffff";
+            x.fillRect(0, 0, W, H);
+            var seed = 9173;
+            function rr() {
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                return seed / 0x7fffffff;
+            }
+            x.lineCap = "round";
+            for (var ci = 0; ci < 46; ci++) {
+                var px = Math.floor(rr() * W),
+                    py = Math.floor(rr() * H);
+                var a = Math.floor(rr() * 4) * Math.PI / 2;
+                var cyan = rr() < 0.30;
+                x.strokeStyle = cyan
+                    ? "rgba(52, 190, 235, " + (0.50 + rr() * 0.35).toFixed(2) + ")"
+                    : "rgba(34, 200, 118, " + (0.50 + rr() * 0.35).toFixed(2) + ")";
+                x.lineWidth = rr() < 0.25 ? 3.6 : 2.2;
+                x.beginPath();
+                x.moveTo(px, py);
+                var segs = 3 + Math.floor(rr() * 4);
+                for (var s = 0; s < segs; s++) {
+                    var len = 26 + rr() * 76;
+                    px += Math.cos(a) * len;
+                    py += Math.sin(a) * len;
+                    x.lineTo(px, py);
+                    a += (rr() < 0.5 ? -1 : 1) * Math.PI / 2;
+                }
+                x.stroke();
+                x.fillStyle = "rgba(16, 84, 64, 0.45)";
+                x.fillRect(px - 7, py - 5, 14, 10);
+                x.strokeStyle = cyan ? "rgba(52, 190, 235, 0.85)"
+                                     : "rgba(34, 200, 118, 0.85)";
+                x.lineWidth = 1.4;
+                x.strokeRect(px - 7, py - 5, 14, 10);
+                x.fillStyle = cyan ? "rgba(140, 236, 255, 0.95)"
+                                   : "rgba(96, 255, 172, 0.95)";
+                x.beginPath();
+                x.arc(px, py, 3.0, 0, Math.PI * 2);
+                x.fill();
+            }
+            var tex = new THREE.CanvasTexture(c);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(0.4505, 0.3546);
+            tex.offset.set(0.5, 0.5106);
+            return tex;
+        }
+
         var maskFaceMat = hackMat(new THREE.MeshBasicMaterial({
-            /* Not paper white.  A flat #f3f6fc plate over a black sphere is the
-             * brightest thing on the desktop and reads as a sticker; a cooler,
-             * slightly dimmed plate lets the mascot's own glow sit on top of
-             * it instead of being hidden behind it. */
-            color: 0xe4ebf7,
+            vertexColors: true,
+            color: 0xffffff,
+            map: circuitTexture(),
             transparent: true,
             opacity: 0.96
         }), 1.0);
         maskFaceMat.renderOrder = 30;
         var maskSideMat = hackMat(new THREE.MeshBasicMaterial({
-            color: 0xa8b2c9
+            color: 0xbfb8aa
         }), 1.0);
         maskSideMat.renderOrder = 30;
         var maskDarkMat = hackMat(new THREE.MeshBasicMaterial({
-            color: 0x0a0e18
+            color: 0x10151f
         }), 0.95);
         maskDarkMat.renderOrder = 31;
-        /* The smile ridge: a hair brighter than the plate, so the mouth
-         * reads as a moulded ridge rather than a drawn line. */
         var maskRidgeMat = hackMat(new THREE.MeshBasicMaterial({
             color: 0xffffff
         }), 1.0);
@@ -1413,8 +1302,6 @@
             vertexColors: true
         }), 0.9);
         maskNoseMat.renderOrder = 31;
-        /* Blush is airbrushed on the real mask, not a disc with an edge -
-         * a soft radial sprite does that for free. */
         var maskBlushTex = glowTexture("rgba(255,96,150,.95)",
             "rgba(255,64,128,.38)");
 
@@ -1427,51 +1314,7 @@
             curveSegments: 20
         };
 
-        /* ---- the mask, to a measured specification ---------------------- *
-         *
-         * The classic Guy Fawkes / Anonymous mask, rebuilt from the
-         * reference photograph.  Every landmark below was measured off
-         * the photo and converted to mask units - x = 0 on the centre
-         * line, y = 0 at the eye line, the plate spanning x ±1.11 and
-         * y -1.44..+1.38 before MASK_SCALE:
-         *
-         *   plate      widest ±1.10 at y +0.38 (cheekbones), broad domed
-         *              forehead, tapering to a rounded chin at (0,-1.44)
-         *   brows      heavy black arches: outer tip (±0.88, 0.83), peak
-         *              y 0.94, inner tails sweeping down toward the nose
-         *              bridge to (±0.12, 0.60) - the mask's signature
-         *   eyes       almond holes, centre (±0.49, 0.40), 0.46 x 0.17,
-         *              outer tip a touch higher than the inner; the
-         *              mascot's green glow lives inside them
-         *   blush      soft pink airbrushed discs on the cheekbones at
-         *              (±0.82, 0.02)
-         *   moustache  handlebar: two wings split by a thin centre seam
-         *              under the nose (y -0.30), sweeping out and up to
-         *              swept-up tips at (±0.75, -0.23)
-         *   smile      thin shadow line with a raised white ridge under
-         *              it, x ±0.30, dipping to y -0.63
-         *   goatee     strip from (±0.13, -0.78) tapering to a rounded
-         *              tip at the chin (±0.035, -1.42)
-         *   nose       a real 3D loft: bridge y +0.52..+0.28 (half-width
-         *              0.03..0.07), ball widest 0.23 at y -0.18, nostril
-         *              wings reaching 0.30 at y -0.26, base tucking under
-         *              at y -0.33; nostril slits conform to its surface
-         * ----------------------------------------------------------------- */
 
-        /* The mascot's face is a sphere, so a flat plate reads as a sticker
-         * floating in front of it.  bendMask() pulls every vertex of a
-         * piece back along z by a shallow dome term - strong sideways,
-         * gentle vertically, centred on the eye line - and every piece of
-         * the mask gets the same bend, so plate, holes and features keep
-         * their relative depths while the whole mask wraps the face.
-         * domeZ() is the same term for the few features that are sprites
-         * rather than geometry.
-         *
-         * The sideways term is tuned against the eye capsules: they sit
-         * just 0.05 in front of the sphere, so a deeper dome would pull
-         * the plate's flanks *behind* the eyes' outer edges and the
-         * capsules would poke through (the eyes also slide back with the
-         * mask - see the eye update - so this is belt and braces). */
         var DOME_X = 0.26,
             DOME_Y = 0.185,
             DOME_Y0 = 0.35;
@@ -1491,14 +1334,6 @@
             return geo;
         }
 
-        /* The extruded caps are triangulated from the outline alone, so the
-         * interior is a handful of big flat chords.  Bending those only warps
-         * the rim: the middle of the plate stays a flat chord and the mascot's
-         * own face pokes through it (the first curved version did exactly
-         * that - a dark blob over the mouth).  Split every triangle into four,
-         * twice, so the cap has enough interior vertices to actually follow
-         * the dome.  The two material groups (caps / sides) are carried over
-         * so the plate keeps its edge colour. */
         function subdivide(geo, levels) {
             var cur = geo;
             for (var lv = 0; lv < levels; lv++) {
@@ -1544,8 +1379,45 @@
             return cur;
         }
 
-        /* The silhouette: domed forehead, cheekbones widest at eye height,
-         * jaw tapering into a rounded chin. */
+        var IVORY = new THREE.Color(0xefe9dc);
+
+        function plateShade(x, y) {
+            var nx = 2 * DOME_X * x,
+                ny = 2 * DOME_Y * (y - DOME_Y0),
+                nz = 1;
+            var inv = 1 / Math.sqrt(nx * nx + ny * ny + 1);
+            nx *= inv; ny *= inv; nz *= inv;
+            var diff = Math.max(0, nx * -0.38 + ny * 0.56 + nz * 0.73);
+            var lit = 0.70 + 0.30 * diff;
+            [-1, 1].forEach(function(sgn) {
+                var dx = x - sgn * 0.49,
+                    dy = y - 0.40;
+                var d = Math.sqrt(dx * dx + dy * dy);
+                if (d < 0.56) lit *= 0.87 + 0.13 * Math.pow(d / 0.56, 0.7);
+            });
+            if (y < -0.55) lit *= 0.95 + 0.05 * Math.max(0, (y + 1.44) / 0.89);
+            return Math.max(0.52, Math.min(1.03, lit));
+        }
+
+        function paintPlate(geo) {
+            var pos = geo.attributes.position;
+            var col = new Float32Array(pos.count * 3);
+            var uvs = new Float32Array(pos.count * 2);
+            var c = new THREE.Color();
+            for (var pi = 0; pi < pos.count; pi++) {
+                c.copy(IVORY).multiplyScalar(
+                    plateShade(pos.getX(pi), pos.getY(pi)));
+                col[pi * 3] = c.r;
+                col[pi * 3 + 1] = c.g;
+                col[pi * 3 + 2] = c.b;
+                uvs[pi * 2] = pos.getX(pi);
+                uvs[pi * 2 + 1] = pos.getY(pi);
+            }
+            geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+            geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+            return geo;
+        }
+
         var faceShape = new THREE.Shape();
         faceShape.moveTo(0, -1.44);
         faceShape.bezierCurveTo(-0.15, -1.437, -0.33, -1.365, -0.48, -1.25);
@@ -1561,11 +1433,27 @@
         faceShape.bezierCurveTo(0.80, -0.84, 0.64, -1.10, 0.48, -1.25);
         faceShape.bezierCurveTo(0.33, -1.365, 0.15, -1.437, 0, -1.44);
         var faceMesh = new THREE.Mesh(
-            bendMask(subdivide(new THREE.ExtrudeGeometry(faceShape, EXTRUDE), 2)),
+            paintPlate(bendMask(subdivide(
+                new THREE.ExtrudeGeometry(faceShape, EXTRUDE), 2))),
             [maskFaceMat, maskSideMat]);
         faceMesh.position.z = -0.036;
         faceMesh.renderOrder = 30;
         mask.add(faceMesh);
+
+        var maskOutlineMat = new THREE.MeshBasicMaterial({
+            color: 0x2bff9a,
+            transparent: true,
+            opacity: 0,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        var maskOutline = new THREE.Mesh(faceMesh.geometry,
+            [maskOutlineMat, maskOutlineMat]);
+        maskOutline.scale.setScalar(1.05);
+        maskOutline.position.z = -0.052;
+        maskOutline.renderOrder = 29;
+        mask.add(maskOutline);
 
         function flatMesh(shape, mat, order, depth) {
             var m = new THREE.Mesh(
@@ -1578,10 +1466,21 @@
             return m;
         }
 
-        /* The brows are the mask's whole expression: heavy arches, thick
-         * over the outer eye, tapering to pointed tails that sweep down
-         * toward the nose bridge.  Nothing else on the mask says "Guy
-         * Fawkes" as loudly. */
+        var maskShadowMat = hackMat(new THREE.MeshBasicMaterial({
+            color: 0x2a3040
+        }), 0.38);
+        maskShadowMat.renderOrder = 30;
+
+        function featureShadow(m, dx, dy) {
+            var sh = new THREE.Mesh(m.geometry, maskShadowMat);
+            sh.position.copy(m.position);
+            sh.position.x += dx;
+            sh.position.y += dy;
+            sh.position.z -= 0.004;
+            sh.renderOrder = 30;
+            mask.add(sh);
+        }
+
         [-1, 1].forEach(function(sgn) {
             var s = new THREE.Shape();
             s.moveTo(sgn * 0.88, 0.83);
@@ -1596,11 +1495,9 @@
             var m = flatMesh(s, maskDarkMat, 31, 0.022);
             m.position.z = 0.052;
             mask.add(m);
+            featureShadow(m, 0.013, -0.017);
         });
 
-        /* The eye holes: wide almonds, the outer tip a touch higher than
-         * the inner - the slanted, hollow look of the reference.  Dark,
-         * with the mascot's green glow inside (below). */
         [-1, 1].forEach(function(sgn) {
             var s = new THREE.Shape();
             s.moveTo(sgn * 0.72, 0.415);
@@ -1611,8 +1508,6 @@
             mask.add(m);
         });
 
-        /* Blush: soft pink discs on the cheekbones, sprite-soft like the
-         * airbrushed paint on a real mask. */
         [-1, 1].forEach(function(sgn) {
             var b = new THREE.Sprite(new THREE.SpriteMaterial({
                 map: maskBlushTex,
@@ -1621,48 +1516,56 @@
                 depthWrite: false
             }));
             b.position.set(sgn * 0.82, 0.0, 0.055 + domeZ(0.82, 0.0));
-            b.scale.setScalar(0.45);
+            b.scale.setScalar(0.42);
             b.renderOrder = 31;
             mask.add(b);
-            mkMat(hackMats, b.material, 0.5);
+            mkMat(hackMats, b.material, 0.36);
         });
 
-        /* The moustache: a centre wedge hanging from under the nose, two
-         * wings that sweep out and up into rolled tips, and a deep notch
-         * between wedge and wing - the white "fang" of the reference.
-         * Wedge, wings and the bottom band are one connected shape. */
+        var maskSheen = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: glowTexture("rgba(255,255,255,.45)",
+                "rgba(255,255,255,.12)"),
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+        }));
+        maskSheen.position.set(-0.38, 1.00, 0.055 + domeZ(-0.38, 1.00));
+        maskSheen.scale.set(1.15, 0.72, 1);
+        maskSheen.renderOrder = 32;
+        mask.add(maskSheen);
+        mkMat(hackMats, maskSheen.material, 0.16);
+
         [-1, 1].forEach(function(sgn) {
             var s = new THREE.Shape();
             s.moveTo(sgn * 0.005, -0.295);
             s.bezierCurveTo(sgn * 0.06, -0.305, sgn * 0.10, -0.315,
-                sgn * 0.115, -0.325);                                   /* centre wedge, top edge */
+                sgn * 0.115, -0.325);
             s.bezierCurveTo(sgn * 0.16, -0.36, sgn * 0.21, -0.415,
-                sgn * 0.26, -0.445);                                    /* down into the notch */
+                sgn * 0.26, -0.445);
             s.bezierCurveTo(sgn * 0.35, -0.425, sgn * 0.40, -0.41,
-                sgn * 0.44, -0.40);                                     /* up out of the notch */
+                sgn * 0.44, -0.40);
             s.bezierCurveTo(sgn * 0.52, -0.385, sgn * 0.585, -0.36,
-                sgn * 0.63, -0.335);                                    /* wing, top edge */
+                sgn * 0.63, -0.335);
             s.bezierCurveTo(sgn * 0.68, -0.305, sgn * 0.73, -0.265,
-                sgn * 0.755, -0.24);                                    /* rise into the tip */
+                sgn * 0.755, -0.24);
             s.bezierCurveTo(sgn * 0.79, -0.215, sgn * 0.815, -0.255,
-                sgn * 0.80, -0.29);                                     /* the rolled cap */
+                sgn * 0.80, -0.29);
             s.bezierCurveTo(sgn * 0.775, -0.335, sgn * 0.74, -0.36,
-                sgn * 0.70, -0.39);                                     /* outer edge, coming down */
+                sgn * 0.70, -0.39);
             s.bezierCurveTo(sgn * 0.64, -0.44, sgn * 0.57, -0.49,
-                sgn * 0.48, -0.53);                                     /* wing, bottom edge */
+                sgn * 0.48, -0.53);
             s.bezierCurveTo(sgn * 0.40, -0.565, sgn * 0.30, -0.585,
-                sgn * 0.22, -0.60);                                     /* bottom band */
+                sgn * 0.22, -0.60);
             s.bezierCurveTo(sgn * 0.19, -0.605, sgn * 0.165, -0.595,
-                sgn * 0.16, -0.585);                                    /* centre tip */
+                sgn * 0.16, -0.585);
             s.bezierCurveTo(sgn * 0.15, -0.50, sgn * 0.13, -0.40,
-                sgn * 0.005, -0.295);                                   /* centre wedge, left edge */
+                sgn * 0.005, -0.295);
             var m = flatMesh(s, maskDarkMat, 31, 0.02);
             m.position.z = 0.046;
             mask.add(m);
+            featureShadow(m, 0.011, -0.015);
         });
 
-        /* The smile: a thin shadow line with the raised white ridge just
-         * under it - the moulded mouth of the reference mask. */
         (function() {
             var s = new THREE.Shape();
             s.moveTo(-0.30, -0.575);
@@ -1685,8 +1588,6 @@
             mask.add(rm);
         })();
 
-        /* The goatee: a long strip from just under the smile, tapering to
-         * a rounded tip that reaches the very bottom of the chin. */
         (function() {
             var s = new THREE.Shape();
             s.moveTo(-0.13, -0.775);
@@ -1698,21 +1599,11 @@
             var m = flatMesh(s, maskDarkMat, 31, 0.02);
             m.position.z = 0.046;
             mask.add(m);
+            featureShadow(m, 0.009, -0.013);
         })();
 
-        /* ---- the nose ---------------------------------------------------- *
-         *
-         * A real 3D loft, not a painted ridge: a half-ellipse cross-section
-         * swept down the nose's stations - narrow at the bridge, swelling
-         * into the ball, flaring at the nostril wings, tucking under where
-         * the moustache meets it.  The mask materials are unlit, so the
-         * reference photo's lighting is baked into vertex colours instead:
-         * bright down the ridge and over the front of the ball, falling
-         * away at the rims and under the tip.
-         * ----------------------------------------------------------------- */
         (function() {
             var STATIONS = [
-                /* y, half-width, protrusion beyond the plate */
                 [ 0.400, 0.046, 0.003],
                 [ 0.300, 0.062, 0.009],
                 [ 0.190, 0.078, 0.019],
@@ -1726,13 +1617,10 @@
                 [-0.305, 0.165, 0.020],
                 [-0.325, 0.055, 0.006]
             ];
-            var SEG = 12;              /* cross-section samples */
-            var BASE_Z = 0.050;        /* sits just proud of the plate face */
+            var SEG = 12;
+            var BASE_Z = 0.050;
             var LAST = STATIONS.length - 1;
 
-            /* The loft's front surface height at (x, y), in flat space.
-             * The nostril slits use it to conform to the nose's surface
-             * instead of floating over it. */
             function surfaceZ(x, y) {
                 var lo = 0;
                 var hi = LAST;
@@ -1762,8 +1650,8 @@
             var positions = [];
             var colours = [];
             var indices = [];
-            var bright = new THREE.Color(0xffffff);
-            var shade = new THREE.Color(0xb9c3da);
+            var bright = new THREE.Color(0xf2ede3);
+            var shade = new THREE.Color(0xcdc4b4);
             var tint = new THREE.Color();
             for (var si = 0; si <= LAST; si++) {
                 var sy = STATIONS[si][0];
@@ -1773,7 +1661,7 @@
                     var th = (k / SEG - 0.5) * Math.PI;
                     positions.push(sw * Math.sin(th), sy,
                                    BASE_Z + sh * Math.cos(th));
-                    var front = Math.cos(th);           /* 1 front .. 0 rim */
+                    var front = Math.cos(th);
                     var low = Math.min(1, Math.max(0, (sy + 0.34) / 0.16));
                     var lit = 0.26 + 0.74 * front * (0.35 + 0.65 * low);
                     tint.copy(shade).lerp(bright, Math.min(1, lit));
@@ -1801,9 +1689,6 @@
             noseMesh.renderOrder = 31;
             mask.add(noseMesh);
 
-            /* The nostril slits: dark crescents wrapped around the wings'
-             * undersides, pulled onto the loft's surface so they read as
-             * moulded shadows rather than decals. */
             [-1, 1].forEach(function(sgn) {
                 var n = new THREE.Shape();
                 n.moveTo(sgn * 0.062, -0.230);
@@ -1821,10 +1706,8 @@
                 mask.add(nm);
             });
 
-            /* The cast shadow under the tip - the reference's strongest
-             * depth cue - as a soft dark sprite tucked behind the base. */
-            var shadeTex = glowTexture("rgba(56,64,90,.85)",
-                "rgba(56,64,90,.32)");
+            var shadeTex = glowTexture("rgba(58,54,62,.85)",
+                "rgba(58,54,62,.30)");
             var sh = new THREE.Sprite(new THREE.SpriteMaterial({
                 map: shadeTex,
                 transparent: true,
@@ -1838,7 +1721,6 @@
             mkMat(hackMats, sh.material, 0.55);
         })();
 
-        /* Green light in the eye holes - the mascot is still in there. */
         var hackEyes = [];
         [-1, 1].forEach(function(sgn) {
             var g = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -1851,13 +1733,30 @@
                 depthTest: false
             }));
             g.position.set(sgn * 0.49, 0.40, 0.16);
-            g.scale.setScalar(0.46);
+            g.scale.setScalar(0.52);
             g.renderOrder = 33;
             mask.add(g);
             hackEyes.push(g);
         });
 
-        /* A green rim light behind the plate. */
+        var hackEyeGlow = [];
+        [-1, 1].forEach(function(sgn) {
+            var hg = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: T.aura,
+                color: 0x2bff9a,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                depthTest: false
+            }));
+            hg.position.set(sgn * 0.49, 0.40, 0.10);
+            hg.scale.setScalar(0.78);
+            hg.renderOrder = 32;
+            mask.add(hg);
+            hackEyeGlow.push(hg);
+        });
+
         var maskRim = new THREE.Sprite(new THREE.SpriteMaterial({
             map: T.aura,
             color: 0x22ff8f,
@@ -1871,9 +1770,8 @@
         maskRim.scale.setScalar(3.4);
         maskRim.renderOrder = 29;
         mask.add(maskRim);
-        mkMat(hackMats, maskRim.material, 0.30);
+        mkMat(hackMats, maskRim.material, 0.38);
 
-        /* One green scan band that sweeps the mask the moment it lands. */
         var scanBand = new THREE.Mesh(
             new THREE.PlaneGeometry(2.7, 0.14),
             new THREE.MeshBasicMaterial({
@@ -1889,7 +1787,36 @@
         scanBand.visible = false;
         mask.add(scanBand);
 
-        /* Shards of light that converge onto the mask as it flies in. */
+        var aurora = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.9, 1.15),
+            new THREE.MeshBasicMaterial({
+                map: T.aura,
+                color: 0x39e9a0,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                depthTest: false
+            }));
+        aurora.position.z = 0.12;
+        aurora.renderOrder = 33;
+        aurora.visible = false;
+        mask.add(aurora);
+
+        var sonar = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: T.aura,
+            color: 0x9fe8ff,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            depthTest: false
+        }));
+        sonar.position.z = -0.06;
+        sonar.renderOrder = 30;
+        sonar.visible = false;
+        mask.add(sonar);
+
         var shards = [];
         for (var sh = 0; sh < 10; sh++) {
             var sm = new THREE.Mesh(
@@ -1919,8 +1846,40 @@
             shards.push(sm);
         }
 
+        var motes = [];
+        for (var mo = 0; mo < 18; mo++) {
+            var mg = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: T.dot,
+                color: mo % 3 ? 0x2bff9a : 0xbdf7ff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                depthTest: false
+            }));
+            mg.renderOrder = 33;
+            mg.visible = false;
+            mg.userData = {
+                phase: Math.random() * Math.PI * 2,
+                radius: 1.7 + Math.random() * 1.5,
+                speed: 0.35 + Math.random() * 0.55,
+                lift: Math.random() * 1.6 - 0.4,
+                size: 0.05 + Math.random() * 0.06,
+                twinkle: 0.5 + Math.random() * 1.6
+            };
+            mask.add(mg);
+            motes.push(mg);
+        }
+
         var hackScanT = -1,
-            hackLanded = false;
+            hackLanded = false,
+            hackNextScan = 0,
+            hackBlinkAt = 2.5,
+            hackBlinkT = -1,
+            hackAuroraAt = 1.5,
+            hackAuroraT = -1,
+            hackSonarAt = 3.0,
+            hackSonarT = -1;
 
         function updateHack(dt, t, mix) {
             var vis = mix > 0.004;
@@ -1931,33 +1890,79 @@
             }
             var e = mix;
             mask.position.copy(FACE).addScaledVector(MASK_PARK, 1 - e);
-            /* Digital tearing while it is still travelling. */
             var gl = Math.max(0, 1 - e / 0.62);
-            mask.position.x += gl * (Math.sin(t * 53.1) + Math.sin(t * 21.7)) * 0.075;
-            mask.position.y += gl * Math.sin(t * 37.3) * 0.035;
+            var burst = Math.pow(Math.max(0, Math.sin(t * 0.43 + 1.3)), 26);
+            var glitch = Math.max(gl, burst * e * 0.9);
+            mask.position.x += glitch * (Math.sin(t * 53.1) + Math.sin(t * 21.7)) * 0.075;
+            mask.position.y += glitch * Math.sin(t * 37.3) * 0.035;
             mask.rotation.set(
-                -1.02 * (1 - e) + gl * 0.06 * Math.sin(t * 33.0),
-                0.78 * (1 - e) + gl * 0.05 * Math.sin(t * 19.0),
-                -0.60 * (1 - e) + gl * 0.05 * Math.sin(t * 27.0));
-            /* Landing: a green flare, then one scan. */
+                -1.02 * (1 - e) + glitch * 0.06 * Math.sin(t * 33.0),
+                0.78 * (1 - e) + glitch * 0.05 * Math.sin(t * 19.0),
+                -0.60 * (1 - e) + glitch * 0.05 * Math.sin(t * 27.0) +
+                    e * 0.015 * Math.sin(t * 0.9));
             var land = Math.exp(-Math.pow((e - 0.985) / 0.028, 2));
             var grow = easeOutCubic(Math.min(e / 0.88, 1));
             mask.scale.setScalar(MASK_SCALE * (0.30 + 0.70 * grow) * (1 + 0.07 * land));
             setOpacity(hackMats, Math.min(1, e * 1.25));
 
+            var idle = e > 0.9 ? (e - 0.9) * 10 : 0;
+            mask.position.y += idle * (Math.sin(t * 1.35) * 0.020 +
+                                       Math.sin(t * 2.13) * 0.011);
+            mask.position.z += idle * Math.sin(t * 1.02 + 0.7) * 0.012;
+            mask.rotation.z += idle * 0.022 * Math.sin(t * 0.62);
+            mask.rotation.y += idle * 0.030 * Math.sin(t * 0.44 + 1.1);
+
+            maskOutlineMat.opacity = (0.30 * e + 0.24 * land) *
+                (0.75 + 0.25 * Math.sin(t * 2.1));
+
             if (!hackLanded && e > 0.93) {
                 hackLanded = true;
                 hackScanT = 0;
+                hackNextScan = t + 6.5;
+                hackBlinkAt = t + 2.2;
+                hackAuroraAt = t + 1.4;
+                hackSonarAt = t + 3.4;
             }
             if (e < 0.35) hackLanded = false;
+            if (hackScanT < 0 && hackLanded && t >= hackNextScan) {
+                hackScanT = 0;
+                hackNextScan = t + 7.0 + (t % 3.0);
+            }
 
-            maskRim.material.opacity = 0.30 * e + 0.55 * land;
+            var rimPulse = 0.86 + 0.14 * Math.sin(t * 1.9);
+            if (hackScanT >= 0) rimPulse += 0.30;
+            if (hackSonarT >= 0) rimPulse += 0.16;
+            maskRim.material.opacity = (0.30 * e + 0.55 * land) * rimPulse;
 
             var flick = 0.72 + 0.16 * Math.sin(t * 7.3) + 0.12 * Math.sin(t * 23.1);
+            var focus = Math.pow(Math.max(0, Math.sin(t * 0.47 + 2.1)), 20);
+            if (hackBlinkT < 0 && hackLanded && t >= hackBlinkAt) {
+                hackBlinkT = 0;
+                hackBlinkAt = t + 2.8 + (t % 2.3);
+            }
+            var blinkK = 1;
+            if (hackBlinkT >= 0) {
+                hackBlinkT += dt;
+                var bp = hackBlinkT / 0.17;
+                if (bp >= 1) {
+                    hackBlinkT = -1;
+                } else {
+                    blinkK = 1 - Math.sin(bp * Math.PI) * 0.88;
+                }
+            }
             for (var i = 0; i < hackEyes.length; i++) {
+                var es = 0.52 + 0.09 * flick + 0.16 * focus;
                 hackEyes[i].material.opacity =
-                    Math.min(1, e * 1.15) * (0.55 + 0.45 * flick) * 0.95;
-                hackEyes[i].scale.setScalar(0.42 + 0.07 * flick);
+                    Math.min(1, e * 1.15) * (0.55 + 0.45 * flick) * 0.95 *
+                    (0.55 + 0.45 * blinkK);
+                hackEyes[i].scale.set(es, es * blinkK, 1);
+            }
+            for (var ge = 0; ge < hackEyeGlow.length; ge++) {
+                var gw = 0.30 + 0.14 * Math.sin(t * 3.1 + ge * 1.7);
+                hackEyeGlow[ge].material.opacity =
+                    e * gw * (0.5 + 0.5 * focus) * (0.6 + 0.4 * blinkK);
+                hackEyeGlow[ge].scale.setScalar(0.72 + 0.10 * focus +
+                    0.06 * Math.sin(t * 2.2 + ge));
             }
 
             if (hackScanT >= 0) {
@@ -1968,12 +1973,62 @@
                     scanBand.position.y = 1.65 - 3.30 * easeOutCubic(sp);
                     scanBand.material.opacity = Math.sin(sp * Math.PI) * 0.85 * e;
                     scanBand.scale.x = 0.55 + 0.45 * Math.sin(sp * Math.PI);
+                } else {
+                    hackScanT = -1;
                 }
             } else {
                 scanBand.visible = false;
             }
 
-            /* Shards converge in step with the fly-in and burn off. */
+            if (hackAuroraT < 0 && hackLanded && t >= hackAuroraAt) {
+                hackAuroraT = 0;
+                hackAuroraAt = t + 3.8 + (t % 2.1);
+            }
+            if (hackAuroraT >= 0) {
+                hackAuroraT += dt;
+                var ap = hackAuroraT / 1.55;
+                aurora.visible = ap < 1;
+                if (ap < 1) {
+                    aurora.position.y = 1.9 - 3.9 * easeOutCubic(ap);
+                    aurora.material.opacity = Math.sin(ap * Math.PI) * 0.20 * e;
+                } else {
+                    hackAuroraT = -1;
+                }
+            } else {
+                aurora.visible = false;
+            }
+
+            if (hackSonarT < 0 && hackLanded && t >= hackSonarAt) {
+                hackSonarT = 0;
+                hackSonarAt = t + 4.4 + (t % 2.7);
+            }
+            if (hackSonarT >= 0) {
+                hackSonarT += dt;
+                var np = hackSonarT / 1.15;
+                sonar.visible = np < 1;
+                if (np < 1) {
+                    sonar.scale.setScalar(1.1 + 2.6 * easeOutCubic(np));
+                    sonar.material.opacity = (1 - np) * 0.30 * e;
+                } else {
+                    hackSonarT = -1;
+                }
+            } else {
+                sonar.visible = false;
+            }
+
+            for (var mI = 0; mI < motes.length; mI++) {
+                var mt = motes[mI],
+                    mu = mt.userData;
+                var ma = mu.phase + t * mu.speed;
+                mt.position.set(Math.cos(ma) * mu.radius * 0.92,
+                                mu.lift + Math.sin(t * 0.9 + mu.phase) * 0.24,
+                                0.25 + Math.sin(ma * 0.7) * mu.radius * 0.5);
+                var tw = 0.5 + 0.5 * Math.sin(t * mu.twinkle + mu.phase * 3.0);
+                mt.material.opacity = e * (0.16 + 0.50 * tw);
+                mt.scale.setScalar(mu.size * (0.7 + 0.6 * tw));
+                mt.visible = e > 0.25;
+            }
+
             for (var s2 = 0; s2 < shards.length; s2++) {
                 var sd = shards[s2],
                     ud = sd.userData;
@@ -1990,7 +2045,6 @@
                 sd.scale.setScalar(0.4 + 1.2 * (1 - p));
             }
 
-            /* Behind the mask the mascot stares straight out. */
             if (mix > 0.6) {
                 var w = (mix - 0.6) / 0.4;
                 tRX = 0.04 + 0.02 * Math.sin(t * 0.33);
@@ -2002,9 +2056,6 @@
         }
 
         function updateOutfits(dt, t) {
-            /* A film wins the face: while the cinema glasses are up both
-             * outfits fold themselves away and come back on their own when
-             * the film ends, because their targets never changed. */
             var sup = cine.mix > 0.45;
             var devMix = driveProp(dev, devOn && !sup, dt, 1.20, 0.62);
             var hackMix = driveProp(hack, hackOn && !sup, dt, 1.05, 0.50);
@@ -2013,17 +2064,17 @@
         }
 
         var cine = {
-            want: 0,        /* 0 = off, 1 = on */
-            mix: 0,         /* 0..1, how far the glasses have flown in */
+            want: 0,
+            mix: 0,
             from: 0,
             dur: 1,
             t: 0,
-            pop: 0,         /* 0..1, how far the box has risen */
+            pop: 0,
             popFrom: 0,
             popDur: 1,
             popT: 0,
-            spawn: 0,       /* countdown to the next kernel */
-            nom: 0          /* eye-squash timer, set when a kernel is eaten */
+            spawn: 0,
+            nom: 0
         };
 
         function cinemaSet(on) {
@@ -2044,12 +2095,6 @@
             boxKick = 0;
         }
 
-        /* The music state: the desired flag and one 0..1 `mix`, driven by the
-         * same `driveProp` the outfits use.  That is deliberate - it gives
-         * the headphones the outfit contract rather than the film one: the
-         * target can change mid-flight and the mix simply walks back the way
-         * it came, which is what happens when a film starts on top of a song
-         * and then ends. */
         var musicOn = false;
         var mus = {
             want: 0,
@@ -2076,9 +2121,6 @@
                 d.from.set(POP_HOME.x + (Math.random() - 0.5) * 0.55,
                     POP_HOME.y + 0.55 + Math.random() * 0.12,
                     POP_HOME.z + (Math.random() - 0.5) * 0.25);
-                /* The mouth sits *below* the glasses - the lens bottoms are
-                 * at y -0.218, so the kernel must arrive under them or it
-                 * reads as a bite into the glass. */
                 d.to.set(-0.06 + (Math.random() - 0.5) * 0.40,
                     -0.40 + Math.random() * 0.12,
                     2.16 + Math.random() * 0.10);
@@ -2089,7 +2131,7 @@
                 f.material.opacity = 1;
                 d.glow.material.opacity = 0;
                 f.scale.setScalar(1);
-                boxKick = 0.34;     /* the box gives a little recoil */
+                boxKick = 0.34;
                 return;
             }
         }
@@ -2110,8 +2152,6 @@
                 f.rotation.x += dt * d.spin;
                 f.rotation.z += dt * d.spin * 0.7;
                 var fade = p < 0.10 ? p / 0.10 : 1;
-                /* The last stretch is the bite: the kernel shrinks into the
-                 * mouth instead of sailing through the face and fading. */
                 var eat = p < 0.78 ? 0 : (p - 0.78) / 0.22;
                 f.material.opacity = Math.max(0, fade * (1 - 0.75 * eat)) * cine.mix;
                 d.glow.material.opacity = Math.max(0, fade * (1 - eat)) * cine.mix * 0.5;
@@ -2119,7 +2159,7 @@
                     (1 - 0.82 * eat * eat) * cine.mix);
                 if (p >= 1) {
                     f.visible = false;
-                    cine.nom = 0.30;        /* eaten: squash the eyes */
+                    cine.nom = 0.30;
                     crunchT = 0.30;
                     crunch.position.copy(f.position);
                     crunch.visible = true;
@@ -2135,10 +2175,6 @@
         }
 
         function updateCinema(dt, t) {
-            /* `e` always runs 0 -> 1, and the lerp below carries `mix` from
-             * wherever it was to the target.  Getting this the wrong way round
-             * (1 - easeInCubic) made the glasses vanish on the first frame of
-             * the exit, fly back in, and then snap out at the end. */
             cine.t += dt;
             var gp = Math.min(cine.t / cine.dur, 1);
             var ge = cine.want ? easeOutCubic(gp) : easeInCubic(gp);
@@ -2165,11 +2201,6 @@
                     -0.98 * (1 - cine.mix));
                 glasses.scale.setScalar(0.62 + 0.38 * cine.mix);
                 setOpacity(glassesMats, cine.mix);
-                /* The arrival accent: a short glint on the glass as they land
-                 * - `cine.t` crosses the settled point ~0.87 s into the
-                 * 1.05 s flight, and the gaussian makes that a ~0.2 s pulse
-                 * rather than a state.  (The thin rim rings that used to
-                 * carry this read as circles inside the glass.) */
                 var glint = Math.exp(-Math.pow((cine.t - 0.87) / 0.085, 2));
                 var lensOp = Math.min(0.92, 0.46 * cine.mix + 0.40 * glint);
                 lensRedMat.opacity = lensOp;
@@ -2179,8 +2210,6 @@
             var pvis = cine.pop > 0.004;
             popcorn.visible = pvis;
             if (pvis) {
-                /* `boxKick` is the recoil from the last launch: a short
-                 * one-sided bounce that makes the box feel held. */
                 boxKick = Math.max(0, boxKick - dt);
                 var kick = Math.sin((1 - boxKick / 0.34) * Math.PI);
                 popcorn.position.set(POP_HOME.x,
@@ -2197,14 +2226,12 @@
             if (cine.want && cine.mix > 0.85 && cine.pop > 0.85) {
                 cine.spawn -= dt;
                 if (cine.spawn <= 0) {
-                    cine.spawn = 4.0;   /* one kernel every four seconds */
+                    cine.spawn = 4.0;
                     spawnKernel();
                 }
             }
             updateKernels(dt);
 
-            /* While the film is on, the mascot watches it instead of the
-             * pointer: the gaze is pulled forward and drifts slowly. */
             if (cine.mix > 0.6) {
                 var w = (cine.mix - 0.6) / 0.4;
                 tRX = 0.04 + 0.02 * Math.sin(t * 0.43);
@@ -2219,13 +2246,7 @@
             for (var qi = 0; qi < notes.length; qi++) {
                 var q = notes[qi];
                 var d = q.userData;
-                /* 0..1 up the lane, and back to 0 when it reaches the top:
-                 * that wrap *is* the loop, and the stagger lives in
-                 * `phase`, so there is no per-note timer to keep. */
                 var p = (t / d.dur + d.phase) % 1;
-                /* Fade in over the first fifth, hold, fade out over the last
-                 * quarter - a note that pops in at full opacity reads as a
-                 * glitch rather than as a note being sung. */
                 var fade = p < 0.20 ? p / 0.20 :
                     (p > 0.74 ? (1 - p) / 0.26 : 1);
                 var op = fade * mus.mix;
@@ -2243,39 +2264,22 @@
         }
 
         function updateMusic(dt, t) {
-            /* A film wins, exactly as it does over the outfits: the
-             * headphones come off while the glasses are up and come back on
-             * their own when the film ends, because `musicOn` never
-             * changed.  Same threshold as `updateOutfits` uses, so the two
-             * hand the face over at the same moment instead of fighting. */
             var sup = cine.mix > 0.45;
             driveProp(mus, musicOn && !sup, dt, 0.85, 0.55);
 
             var vis = mus.mix > 0.004;
             phones.visible = vis;
             if (vis) {
-                /* The band drops onto the head instead of flying in from the
-                 * side: it is *worn*, so the one motion that reads correctly
-                 * is the one you make putting it on. */
                 phones.position.set(0, 1.45 * (1 - mus.mix), 0.30);
                 phones.rotation.z = 0.34 * (1 - mus.mix);
                 phones.scale.setScalar(0.76 + 0.24 * mus.mix);
                 setOpacity(musicMats, mus.mix);
-                /* The cup lights breathe with the beat the notes imply.  Set
-                 * after setOpacity, which is the only reason this is not
-                 * just another entry in musicMats. */
                 var beat = 0.80 + 0.20 * Math.sin(t * 3.3);
                 for (var gi = 0; gi < cupGlows.length; gi++)
                     cupGlows[gi].material.opacity = 0.30 * mus.mix * beat;
             }
-            /* The notes are gated on the mix inside updateNotes, so they can
-             * be driven every frame - it costs nothing when they are off. */
             updateNotes(dt, t);
 
-            /* The idle: a small bounce and a slow sway of the head while the
-             * song is on, subtle enough to read as listening rather than as
-             * a second animation.  Applied after the loop has set the body's
-             * own bob and tilt, which is what makes it additive. */
             if (mus.mix > 0.01) {
                 world.position.y += mus.mix * 0.075 * Math.sin(t * 3.15);
                 world.rotation.z += mus.mix * 0.022 * Math.sin(t * 1.55);
@@ -2367,22 +2371,8 @@
             }).observe(canvas);
         }
         var ck = new THREE.Clock();
-        /* The pet is a mascot, not a game.
-         *
-         * The loop below is a plain requestAnimationFrame chain with no rate
-         * limit, which is fine when the scene is drawn on the GPU - the
-         * display's refresh caps it.  On a software rasteriser (a machine
-         * without a working GPU path, or UAI_SOFTWARE_GL=1) there is no
-         * vblank to wait for and the same chain runs as fast as the CPU
-         * allows: the scene was measured re-rasterising at over 300% CPU,
-         * which starves the shell badly enough that menus stop opening.
-         *
-         * Half the display's rate is visually indistinguishable on a 260px
-         * mascot and halves that cost.  The clock is left alone on the
-         * skipped frames, so the animation still advances by real elapsed
-         * time rather than slowing down. */
         var lastPaint = 0,
-            minStep = 1 / 30;
+            minStep = softGL ? 1 / 15 : 1 / 30;
 
         function frame(now) {
             rafId = requestAnimationFrame(frame);
@@ -2493,10 +2483,6 @@
             eR.position.x = 0.66 + eyeTX * 0.12;
             eL.position.y = 0.42 + eyeTY * 0.1;
             eR.position.y = eL.position.y;
-            /* Behind the mask the eyes slide back out of harm's way: the
-             * dome-bent plate is thinner than the eye capsules are deep,
-             * and without this the capsules' outer edges poke through the
-             * plate.  They slide forward again as the mask leaves. */
             eL.position.z = 2 - 0.26 * hack.mix;
             eR.position.z = eL.position.z;
             bt -= dt;
@@ -2507,8 +2493,6 @@
             var blink = bt > 0 ? Math.max(0.07, Math.min(1, Math.abs(bt / 0.24 * 2 - 1))) : 1;
             squintV += ((spinT >= 0 ? 0.3 : 1) - squintV) * Math.min(1, dt * 4);
             var eyeEnv = 1 - 0.12 * Math.max(0, Math.min(1, flare));
-            /* Squash and stretch while a kernel is being eaten: `cine.nom`
-             * runs 0.30 -> 0, and sin() of its half-cycle is a clean pulse. */
             var nomPulse = Math.sin(Math.min(cine.nom / 0.30, 1) * Math.PI);
             var nomY = 1 - 0.46 * nomPulse;
             var nomX = 1 + 0.46 * nomPulse;
@@ -2516,11 +2500,6 @@
             eR.scale.x = eyeEnv * nomX;
             eL.scale.y = blink * squintV * eyeEnv * nomY;
             eR.scale.y = blink * squintV * eyeEnv * nomY;
-            /* The eye glows are depthTest:false light, so they render over
-             * whatever is in front of them.  Behind the mask that is a
-             * leak: the soft cyan discs used to bleed straight through the
-             * plate and wash out the whole face.  They fade out with the
-             * mask instead - inside it the green mask eyes do the glowing. */
             var eyeHide = 1 - hack.mix;
             for (var hi = 0; hi < eyeHalos.length; hi++) {
                 var hh = eyeHalos[hi];
@@ -2557,14 +2536,9 @@
             cinema: function(on) {
                 cinemaSet(!!on);
             },
-            /* The sibling state: headphones and notes while a song plays.
-             * A film outranks it, so both can be set and the mascot resolves
-             * it on its own. */
             music: function(on) {
                 musicSet(!!on);
             },
-            /* The desktop mode the mascot is dressed for: "developer" gets the
-             * laptop, "hacker" the mask, anything else takes both off. */
             outfit: function(name) {
                 name = String(name || "");
                 devOn = name === "developer";

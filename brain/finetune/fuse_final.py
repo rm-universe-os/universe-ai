@@ -16,17 +16,17 @@ OUT_Q8 = os.path.join(FLASH, "universe-ai-fused-q4_0.gguf")
 GGUF_DIR2 = os.path.expanduser("~")
 os.makedirs(GGUF_DIR2, exist_ok=True)
 
-print("[1/5] loading base GGUF → bf16 RAM…", flush=True)
+print("[1/5] loading base GGUF -> bf16 RAM...", flush=True)
 model = AutoModelForCausalLM.from_pretrained(GGUF_DIR2, gguf_file="universe-ai.gguf", torch_dtype=torch.bfloat16)
 
-print("[2/5] fusing LoRA into weights…", flush=True)
+print("[2/5] fusing LoRA into weights...", flush=True)
 from peft import PeftModel
 model = PeftModel.from_pretrained(model, ADAPTER)
 model = model.merge_and_unload()
 sd = model.state_dict()
 cfg = model.config
 
-print("[3/5] writing GGUF q8_0 (streaming to flash)…", flush=True)
+print("[3/5] writing GGUF q8_0 (streaming to flash)...", flush=True)
 w = GGUFWriter(OUT_Q8, arch="qwen3")
 def add(key, val, vt=None):
     w.add_key_value(key, val, vt or (MVT.STRING if isinstance(val, str) else MVT.UINT32))
@@ -79,5 +79,5 @@ w.write_header_to_file()
 w.write_kv_data_to_file()
 w.write_tensors_to_file(progress=True)
 w.close()
-print("Q8 GGUF →", OUT_Q8, f"({os.path.getsize(OUT_Q8)/1e9:.2f} GB)", flush=True)
+print("Q8 GGUF ->", OUT_Q8, f"({os.path.getsize(OUT_Q8)/1e9:.2f} GB)", flush=True)
 os.unlink("'" + os.path.expanduser("~") + "'/universe-ai.gguf")

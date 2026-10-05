@@ -21,13 +21,13 @@ src = os.path.join(wdir, "base.gguf")
 if not os.path.exists(src):
     shutil.copyfile(BLOB, src)
 
-print("[1/5] loading base GGUF → bf16 RAM…", flush=True)
+print("[1/5] loading base GGUF -> bf16 RAM...", flush=True)
 model = AutoModelForCausalLM.from_pretrained(wdir, gguf_file="base.gguf", torch_dtype=torch.bfloat16)
 os.unlink(src)
 assert not any("o_proj" in w for w in []), ""
 missing_check = model.state_dict()
 
-print("[2/5] fusing round-1 LoRA…", flush=True)
+print("[2/5] fusing round-1 LoRA...", flush=True)
 model = PeftModel.from_pretrained(model, ADAPTER)
 model = model.merge_and_unload().to(torch.float32)
 cfg = model.config
@@ -35,7 +35,7 @@ sd = model.state_dict()
 del model
 tok = AutoTokenizer.from_pretrained(REPO)
 
-print("[3/5] metadata…", flush=True)
+print("[3/5] metadata...", flush=True)
 name_map = get_tensor_name_map(MODEL_ARCH.QWEN3, cfg.num_hidden_layers)
 OUT_TMP = "'" + os.path.expanduser("~") + "'/universe-ai-v2.gguf"
 w = GGUFWriter(OUT_TMP, arch="qwen3")
@@ -78,7 +78,7 @@ for i in range(NT):
 merges = [" ".join(m) if isinstance(m, list) else m for m in tj["model"]["merges"]]
 w.add_token_list(tokens); w.add_token_types(types); w.add_token_merges(merges)
 
-print("[4/5] tensors (map-derived names, Q4_0)…", flush=True)
+print("[4/5] tensors (map-derived names, Q4_0)...", flush=True)
 bad = 0
 for i, (hf_name, t) in enumerate(sd.items()):
     if i % 60 == 0: print('tensor', i, '/', len(sd), flush=True)
@@ -99,7 +99,7 @@ for i, (hf_name, t) in enumerate(sd.items()):
         w.add_tensor(gname, q, raw_dtype=GGMLQuantizationType.Q4_0)
 print("unmapped:", bad)
 
-print("[5/5] writing…", flush=True)
+print("[5/5] writing...", flush=True)
 w.write_header_to_file(); w.write_kv_data_to_file(); w.write_tensors_to_file(progress=True); w.close()
 shutil.move(OUT_TMP, OUT)
-print("FUSED-V2 →", OUT, f"({os.path.getsize(OUT)/1e9:.2f} GB)")
+print("FUSED-V2 ->", OUT, f"({os.path.getsize(OUT)/1e9:.2f} GB)")

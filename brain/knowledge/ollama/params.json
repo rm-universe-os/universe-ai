@@ -1,0 +1,1 @@
+{"num_ctx":16384,"repeat_penalty":1.05,"stop":["<|im_start|>","<|im_end|>"],"temperature":0.4,"top_k":20,"top_p":0.8}

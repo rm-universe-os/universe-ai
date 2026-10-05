@@ -159,11 +159,11 @@ rm 7213 12.4 3.2 chrome""", "ffmpeg is using 92% of one core - probably a runnin
     ws("جدیدترین نسخه کرنل لینوکس چیست؟", "web_search: latest Linux kernel version", "1. kernel.org - The Linux Kernel Archives\n   https://kernel.org\n   Latest mainline: 7.3-rc2 released 2026-09-21...", "طبق kernel.org، جدیدترین نسخه mainline، 7.3-rc2 است (۲۱ سپتامبر ۲۰۲۶)؛ شاخه‌های stable روی 7.2.x هستند.", "fa"),
     rc("¿Cuánto espacio queda en mi disco?", "df -h / | tail -1", "/dev/nvme0n1p8 95G 62G 29G 69% /", "Quedan 29 GB libres en el sistema de archivos raíz (69% usado). Todo en orden.", "es"),
     si("Dame un resumen del sistema", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nUptime: 1d 2h 10m\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Resumen: Universe OS v0.7.1, kernel 7.2.0, 1 día encendido. 25 GB de RAM libres y 65 GB de disco libre. Todo cómodo.", "es"),
-    rc("检查一下磁盘空间", "df -hT", DF_OUT, "根文件系统 (/) 已用 69%——95 GB 中剩余 29 GB。U 盘还有 6 GB 可用。", "zh"),
-    rc("Quel processus utilise le plus de CPU ?", "ps aux --sort=-%cpu | head -4", "USER PID %CPU %MEM COMMAND\nrm 8830 92.1 3.0 ffmpeg", "ffmpeg consomme 92% d'un cœur — probablement un encodage en cours. Rien d'autre de lourd.", "fr"),
+    rc("检查一下磁盘空间", "df -hT", DF_OUT, "根文件系统 (/) 已用 69%--95 GB 中剩余 29 GB。U 盘还有 6 GB 可用。", "zh"),
+    rc("Quel processus utilise le plus de CPU ?", "ps aux --sort=-%cpu | head -4", "USER PID %CPU %MEM COMMAND\nrm 8830 92.1 3.0 ffmpeg", "ffmpeg consomme 92% d'un cœur - probablement un encodage en cours. Rien d'autre de lourd.", "fr"),
     rc("проверь свободное место на диске", "df -h / | tail -1", "/dev/nvme0n1p8 95G 62G 29G 69% /", "На корневом разделе свободно 29 ГБ из 95 (использовано 69%). Всё в норме.", "ru"),
     rc("كيف أتحقق من حالة الجدار الناري؟", "sudo ufw status", "Status: active\n\nTo Action From\n-- ------ ----\n22/tcp ALLOW Anywhere", "الجدار الناري (UFW) مفعّل، مع قاعدة واحدة تسمح بـ SSH على المنفذ 22. كل ما عدا ذلك مرفوض افتراضيًا.", "ar"),
-    si("sistemin genel durumunu göster", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Özet: Universe OS v0.7.1, çekirdek 7.2.0. 30 GB RAM'in 25 GB'ı ve 95 GB diskin 65 GB'ı boş — sistem rahat görünüyor.", "tr"),
+    si("sistemin genel durumunu göster", "OS: Universe OS v0.7.1\nKernel: 7.2.0-070200-generic\nMemory: 4.1 used / 30.0 GB (25.0 available)\nDisk /: 30 used / 95 GB (65 free)", "Özet: Universe OS v0.7.1, çekirdek 7.2.0. 30 GB RAM'in 25 GB'ı ve 95 GB diskin 65 GB'ı boş - sistem rahat görünüyor.", "tr"),
     rc("チェック: ディスクの空き容量は?", "df -h / | tail -1", "/dev/nvme0n1p8 95G 62G 29G 69% /", "ルートファイルシステムの空きは29 GB（使用率69%）です。問題ありません。", "ja"),
 ok("how does the sudo gate work in Universe OS?", "how does sudo work", """Universe OS - Privilege gate (sudo)
 sudo is a symlink to universe-privilege. Every root request opens a GTK consent dialog showing:

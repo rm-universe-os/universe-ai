@@ -20,7 +20,7 @@ tok = AutoTokenizer.from_pretrained(REPO)
 bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                          bnb_4bit_compute_dtype=torch.bfloat16,
                          bnb_4bit_use_double_quant=True)
-print("[1/5] loading GGUF (dequantize to bf16 in RAM, 30GB available)…", flush=True)
+print("[1/5] loading GGUF (dequantize to bf16 in RAM, 30GB available)...", flush=True)
 model = AutoModelForCausalLM.from_pretrained(
     GGUF_DIR, gguf_file="universe-ai.gguf",
     torch_dtype=torch.bfloat16)
@@ -29,19 +29,19 @@ shutil.rmtree(GGUF_DIR, ignore_errors=True)
 model.config.use_cache = False
 model.enable_input_require_grads()
 
-print("[2/5] attaching LoRA adapters…", flush=True)
+print("[2/5] attaching LoRA adapters...", flush=True)
 model = get_peft_model(model, LoraConfig(
     r=32, lora_alpha=64, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM",
     target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
 model.print_trainable_parameters()
 
-print("[3/5] dataset…", flush=True)
+print("[3/5] dataset...", flush=True)
 ds = load_dataset("json", data_files=os.path.abspath(DATA), split="train")
 def to_text(ex):
     return {"text": tok.apply_chat_template(ex["messages"], tokenize=False, add_generation_prompt=False)}
 ds = ds.map(to_text)
 
-print("[4/5] training…", flush=True)
+print("[4/5] training...", flush=True)
 args = SFTConfig(
     gradient_checkpointing=True,
     output_dir=OUT,
@@ -54,7 +54,7 @@ args = SFTConfig(
 trainer = SFTTrainer(model=model, args=args, train_dataset=ds, processing_class=tok)
 trainer.train()
 
-print("[5/5] saving adapter…", flush=True)
+print("[5/5] saving adapter...", flush=True)
 trainer.model.save_pretrained(os.path.join(OUT, "adapter"))
 tok.save_pretrained(os.path.join(OUT, "adapter"))
-print("ADAPTER →", os.path.join(OUT, "adapter"))
+print("ADAPTER ->", os.path.join(OUT, "adapter"))

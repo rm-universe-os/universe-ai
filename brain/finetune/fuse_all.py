@@ -19,10 +19,10 @@ src = os.path.join(wdir, "base.gguf")
 if not os.path.exists(src):
     shutil.copyfile(BLOB, src)
 
-print("[1/5] loading…", flush=True)
+print("[1/5] loading...", flush=True)
 model = AutoModelForCausalLM.from_pretrained(wdir, gguf_file="base.gguf", torch_dtype=torch.bfloat16)
 os.unlink(src)
-print("[2/5] fusing…", flush=True)
+print("[2/5] fusing...", flush=True)
 model = PeftModel.from_pretrained(model, ADAPTER)
 model = model.merge_and_unload().to(torch.float32)
 cfg = model.config
@@ -30,7 +30,7 @@ sd = model.state_dict()
 del model
 tok = AutoTokenizer.from_pretrained(REPO)
 
-print("[3/5] building GGUF metadata…", flush=True)
+print("[3/5] building GGUF metadata...", flush=True)
 import gguf.gguf_reader as rrmod
 w = GGUFWriter(OUT, arch="qwen3")
 w.add_key_value("general.name", "universe-ai-ft-fused")
@@ -61,7 +61,7 @@ for at in tj.get("added_tokens", []):
 merges = [" ".join(m) if isinstance(m, list) else m for m in tj["model"]["merges"]]
 w.add_token_list(tokens); w.add_token_types(types); w.add_token_merges(merges)
 
-print("[4/5] renaming + quantizing tensors (Q4_0)…", flush=True)
+print("[4/5] renaming + quantizing tensors (Q4_0)...", flush=True)
 def map_name(n):
     n = n.replace("model.", "")
     import re
@@ -82,6 +82,6 @@ for name, t in sd.items():
         q = gquant(t.numpy(), GGMLQuantizationType.Q4_0)
         w.add_tensor(map_name(name), q, raw_dtype=GGMLQuantizationType.Q4_0)
 
-print("[5/5] writing…", flush=True)
+print("[5/5] writing...", flush=True)
 w.write_header_to_file(); w.write_kv_data_to_file(); w.write_tensors_to_file(progress=True); w.close()
-print("FUSED →", OUT, f"({os.path.getsize(OUT)/1e9:.2f} GB)")
+print("FUSED ->", OUT, f"({os.path.getsize(OUT)/1e9:.2f} GB)")
