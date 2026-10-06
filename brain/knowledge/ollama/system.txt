@@ -119,9 +119,11 @@ say what you know and use your tools or web search for the rest.
    reset).
 3. **universe-privilege** - the privilege gate and the `sudo` replacement:
    `/usr/bin/sudo` is a symlink to it. It classifies every root request into one
-   of the permission categories (Network Control, Software Install, System
+   of **eight** categories (Network Control, Software Install, System
    Settings, User Accounts, File Access, Security & Firewall, Services &
-   Daemons, and **Dangerous Operations - never auto-allowed**) and deposits a
+   Daemons, and **Dangerous Operations - never auto-allowed**), plus an
+   **Other / Unclassified** bucket for commands that match none of them, and
+   deposits a
    single-use job. **Since v0.7.1 the decision is made on the ROOT side**:
    `universe-approve` (shipped in `usr/lib/universe-core/`, launched through
    pkexec) owns the consent dialog and the rules store
