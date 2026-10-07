@@ -18,16 +18,24 @@
 
     function softwareGL() {
         try {
+            if (typeof process !== "undefined" && process.env &&
+                (process.env.UAI_SOFTWARE_GL === "1" ||
+                 process.env.UAI_SOFTWARE_GL === "true"))
+                return true;
+        } catch (e) {
+        }
+        try {
             var c = document.createElement("canvas");
             var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
             if (!gl) return true;
             var dbg = gl.getExtension("WEBGL_debug_renderer_info");
-            var name = String(dbg ?
-                gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) :
-                gl.getParameter(gl.RENDERER) || "");
+            var name = String(
+                (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "") + " " +
+                (gl.getParameter(gl.RENDERER) || "") + " " +
+                (gl.getParameter(gl.VENDOR) || ""));
             var lose = gl.getExtension("WEBGL_lose_context");
             if (lose) lose.loseContext();
-            return /swiftshader|llvmpipe|softpipe|software|mesa offscreen|lavapipe/i
+            return /swiftshader|llvmpipe|softpipe|software|mesa offscreen|lavapipe|subzero/i
                 .test(name);
         } catch (e) {
             return true;
@@ -2310,12 +2318,14 @@
         var gazeHeat = 0,
             lifeT = 0,
             gNext = 2.4;
+        var lastEngage = -1e9;
         var tiltZ = 0,
             tTZ = 0;
         var talking = 0;
         var peekLift = 0,
             tPeekLift = 0;
         canvas.addEventListener("pointerdown", function(e) {
+            lastEngage = performance.now();
             dragging = true;
             moved = false;
             lxp = e.clientX;
@@ -2341,11 +2351,16 @@
             squintV = Math.min(squintV, 0.55);
         });
         addEventListener("pointermove", function(e) {
-            if (dragging) return;
+            if (dragging) {
+                lastEngage = performance.now();
+                return;
+            }
             gazeHeat = 2.2;
             var r = canvas.getBoundingClientRect();
             var dx = (e.clientX - (r.left + r.width / 2)) / Math.max(innerWidth, 1);
             var dy = (e.clientY - (r.top + r.height / 2)) / Math.max(innerHeight, 1);
+            if (Math.abs(dx) <= 1.3 && Math.abs(dy) <= 1.3)
+                lastEngage = performance.now();
             eyeTX = Math.max(-0.3, Math.min(0.3, dx * 0.95));
             eyeTY = Math.max(-0.24, Math.min(0.24, dy * 0.62));
             tRY = Math.max(-0.34, Math.min(0.34, dx * 0.45));
@@ -2372,13 +2387,24 @@
         }
         var ck = new THREE.Clock();
         var lastPaint = 0,
-            minStep = softGL ? 1 / 15 : 1 / 30;
+            minStep = softGL ? 1 / 15 : 1 / 30,
+            idleStep = softGL ? 1 / 1.2 : 0;
 
         function frame(now) {
-            rafId = requestAnimationFrame(frame);
+            var step = minStep;
+            if (idleStep && typeof now === "number" &&
+                now - lastEngage > 2500)
+                step = idleStep;
+            if (softGL) {
+                rafId = setTimeout(function() {
+                    frame(performance.now());
+                }, Math.max(16, step * 1000));
+            } else {
+                rafId = requestAnimationFrame(frame);
+            }
             if (!visible || document.hidden) return;
             if (typeof now === "number") {
-                if (now - lastPaint < minStep) return;
+                if (now - lastPaint < step) return;
                 lastPaint = now;
             }
             var dt = Math.min(ck.getDelta(), 0.05),
@@ -2546,7 +2572,8 @@
             },
 
             dispose: function() {
-                cancelAnimationFrame(rafId);
+                if (softGL) clearTimeout(rafId);
+                else cancelAnimationFrame(rafId);
                 renderer.dispose();
                 canvas.__universeAI = false;
             }

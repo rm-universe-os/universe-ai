@@ -4222,6 +4222,12 @@ function runSetupFlow() {
     ipcMain.on("setup-finished", finishSetup)
 }
 app.whenReady().then(async () => {
+    try {
+        const gpu = app.getGPUFeatureStatus() || {};
+        if (/software|disabled|unavailable/i.test(String(gpu.webgl || "")))
+            process.env.UAI_SOFTWARE_GL = "1";
+    } catch (e) {
+    }
     loadHistoryIndex();
     migrateLegacyHistory();
     const harness = IS_TEST || !!LOGO_OUT || !!process.env.UNIVERSE_SNAPSHOT || !!process.env.UNIVERSE_SNAPSHOT2 || !!process.env.UNIVERSE_SNAPSHOT_CHAT || !!process.env.UAI_CHATPROBE || !!process.env.UAI_TOOLTEST || !!process.env.UAI_EDITTEST || !!process.env.UAI_TRAY_TEST || !!process.env.UAI_ASK;

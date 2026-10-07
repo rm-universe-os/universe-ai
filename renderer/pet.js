@@ -69,6 +69,7 @@ function convertToPngDataURL(px, w, h) {
 window.__uaiCapture = function() {
     return new Promise((resolve) => {
         wantCapture = resolve;
+        window.requestAnimationFrame(function() {});
         setTimeout(() => {
             if (wantCapture === resolve) {
                 wantCapture = null;
