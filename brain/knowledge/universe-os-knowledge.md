@@ -16,8 +16,9 @@ say what you know and use your tools or web search for the rest.
   in a single pass and verified inside the packed image.
 - **First boot**: the Welcome wizard opens without a login screen (run mode,
   theme, Client/Server target, account). The live session autologs in as
-  `universe`; the installer turns autologin off for the installed system. From
-  the **second boot**, GDM shows the login screen normally.
+  `universe`. The installed system also autologs in on its first boot (smooth
+  out-of-box); the `universe-firstboot-lockdown` oneshot disables autologin
+  afterwards, so from the **second boot** GDM shows the login screen.
 - Locale: `en_US.UTF-8` plus international locales baked into the image.
 - Desktop: **GNOME 46** (GTK4 / libadwaita), GDM3, **Wayland-first** (Xwayland
   for legacy apps), PipeWire audio.
@@ -95,10 +96,11 @@ say what you know and use your tools or web search for the rest.
    reset).
 3. **universe-privilege** - the privilege gate and the `sudo` replacement:
    `/usr/bin/sudo` is a symlink to it. It classifies every root request into one
-   of the permission categories (Network Control, Software Install, System
+   of **eight** categories (Network Control, Software Install, System
    Settings, User Accounts, File Access, Security & Firewall, Services &
-   Daemons, and **Dangerous Operations - never auto-allowed**) and deposits a
-   single-use job. **Since v0.7.1 the decision is made on the ROOT side**:
+   Daemons, and **Dangerous Operations - never auto-allowed**), plus an
+   **Other / Unclassified** bucket for commands that match none of them, and
+   deposits a single-use job. **Since v0.7.1 the decision is made on the ROOT side**:
    `universe-approve` (shipped in `usr/lib/universe-core/`, launched through
    pkexec) owns the consent dialog and the rules store
    `/var/lib/universe/privilege/rules.json` - owned by root, mode 0600 - and the
@@ -428,6 +430,32 @@ these are verified facts from the build machine.
     a resize (the shader pipeline could get bypassed, leaving blur-only
     "washed out" surfaces) and forces a redraw when a menu closes (stale
     dark region on some VM display paths).
+41. Live-only state leaks into installed systems - the installer rsyncs the
+    LIVE root to the target. casper creates
+    `/usr/share/glib-2.0/schemas/casper.gschema.override` (disable-lock-screen
+    = true) at live boot; if it reaches the target, the lock screen (Super+L)
+    silently never works there. The installer removes it and the casper
+    screen-reader autostart, then re-runs `glib-compile-schemas` in the
+    chroot. Verified: override present -> `gsettings get
+    org.gnome.desktop.lockdown disable-lock-screen` = true; after the fix =
+    false. Re-audit this leak class on every installer change: /etc/hostname,
+    /etc/machine-id (truncate + drop the dbus copy), sudoers.d/casper, SSH
+    host keys, NetworkManager connections.
+42. GDM autologin must be turned off by a oneshot service, not by the wizard:
+    the wizard's `firstboot-finalize.sh` never runs on installed systems (the
+    installer removes its autostart), so autologin used to persist forever and
+    the account password was bypassed. `universe-firstboot-lockdown.service`
+    writes `/var/lib/universe/autologin-seen` on the first installed boot
+    (autologin stays - smooth out-of-box) and on the second boot sets
+    `AutomaticLoginEnable=false` in `/etc/gdm3/custom.conf` and deletes the
+    installer's `/var/lib/universe/installed` marker. The build purges
+    /var/lib/universe/{installed,autologin-seen,live-account.hash} from the
+    image so nothing ships pre-marked.
+43. The desktop stack needs the `rtkit` and `ibus` packages: without them every
+    login logs "Failed to make thread 'KMS thread' realtime scheduled" and
+    "Failed to launch ibus-daemon". rtkit-daemon must be enabled explicitly
+    (`systemctl enable rtkit-daemon` - the chroot postinst skips it). Both are
+    recorded in `scripts/deploy-fixes.sh`; keep them when re-slimming.
 
 ## Verification & testing methods
 

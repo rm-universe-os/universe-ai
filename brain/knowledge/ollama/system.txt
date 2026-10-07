@@ -40,8 +40,9 @@ say what you know and use your tools or web search for the rest.
   in a single pass and verified inside the packed image.
 - **First boot**: the Welcome wizard opens without a login screen (run mode,
   theme, Client/Server target, account). The live session autologs in as
-  `universe`; the installer turns autologin off for the installed system. From
-  the **second boot**, GDM shows the login screen normally.
+  `universe`. The installed system also autologs in on its first boot (smooth
+  out-of-box); the `universe-firstboot-lockdown` oneshot disables autologin
+  afterwards, so from the **second boot** GDM shows the login screen.
 - Locale: `en_US.UTF-8` plus international locales baked into the image.
 - Desktop: **GNOME 46** (GTK4 / libadwaita), GDM3, **Wayland-first** (Xwayland
   for legacy apps), PipeWire audio.

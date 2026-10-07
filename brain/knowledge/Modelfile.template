@@ -99,8 +99,9 @@ say what you know and use your tools or web search for the rest.
   in a single pass and verified inside the packed image.
 - **First boot**: the Welcome wizard opens without a login screen (run mode,
   theme, Client/Server target, account). The live session autologs in as
-  `universe`; the installer turns autologin off for the installed system. From
-  the **second boot**, GDM shows the login screen normally.
+  `universe`. The installed system also autologs in on its first boot (smooth
+  out-of-box); the `universe-firstboot-lockdown` oneshot disables autologin
+  afterwards, so from the **second boot** GDM shows the login screen.
 - Locale: `en_US.UTF-8` plus international locales baked into the image.
 - Desktop: **GNOME 46** (GTK4 / libadwaita), GDM3, **Wayland-first** (Xwayland
   for legacy apps), PipeWire audio.
@@ -178,10 +179,11 @@ say what you know and use your tools or web search for the rest.
    reset).
 3. **universe-privilege** - the privilege gate and the `sudo` replacement:
    `/usr/bin/sudo` is a symlink to it. It classifies every root request into one
-   of the permission categories (Network Control, Software Install, System
+   of **eight** categories (Network Control, Software Install, System
    Settings, User Accounts, File Access, Security & Firewall, Services &
-   Daemons, and **Dangerous Operations - never auto-allowed**) and deposits a
-   single-use job. **Since v0.7.1 the decision is made on the ROOT side**:
+   Daemons, and **Dangerous Operations - never auto-allowed**), plus an
+   **Other / Unclassified** bucket for commands that match none of them, and
+   deposits a single-use job. **Since v0.7.1 the decision is made on the ROOT side**:
    `universe-approve` (shipped in `usr/lib/universe-core/`, launched through
    pkexec) owns the consent dialog and the rules store
    `/var/lib/universe/privilege/rules.json` - owned by root, mode 0600 - and the
