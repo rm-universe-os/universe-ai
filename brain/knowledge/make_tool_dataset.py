@@ -606,15 +606,13 @@ time to full:        1.2 hours"""),
  ("run_command", {"command": "cat /sys/class/power_supply/AC*/online 2>/dev/null"}, "1")],
  "Yes, the laptop is charging: AC is connected (1) and the battery is at 64% with about 1.2 hours to full."),
 ("how do I read the universe os docs?", [("os_knowledge", {"query": "documentation"}, """Universe OS - Documentation map
-  Universe-OS-HANDOFF.md ....... architecture + 56 proven pitfalls (repo root)
   docs/HARNESS.md ............. how the AI harness works
   docs/TRAINING.md ............ how the model was trained
   ~/anticensor/README.md ...... internet-freedom toolbox (separate project)"""),
  ("list_dir", {"path": "/home/rm/Desktop/Univerce-OS"}, """drwxr-xr-x  scripts/
 drwxr-xr-x  build/
--rw-r--r--  Universe-OS-HANDOFF.md (48 KB)
 -rw-r--r--  Universe-OS-beta(v0.7.1).iso (4.7 GB)""")],
- "The main references are Universe-OS-HANDOFF.md (architecture and 56 proven pitfalls) in the project root, plus docs/HARNESS.md and docs/TRAINING.md for the AI side. I can open any of them - which one first?"),
+ "The main references are docs/HARNESS.md and docs/TRAINING.md for the AI side. I can open any of them - which one first?"),
 ("the clock is off by two hours", [("run_command", {"command": "timedatectl | grep -E 'Time zone|synchronized|RTC'"}, """Time zone: Europe/Berlin (CEST, +0200)
 System clock synchronized: no
 RTC in local TZ: yes"""),

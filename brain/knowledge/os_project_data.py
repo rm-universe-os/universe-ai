@@ -196,15 +196,13 @@ KEY_FILES = {
 "universe-settings/": "the Rust rewrite of the settings app, still in development and not yet part of the ISO.",
 "gnome-apps/": "the Python drafts of the GNOME apps before they are finalised into the rootfs.",
 "build/testtools/": "the verification tools: app-icon-check.py, css-parse-check.sh, glass-level-check.py, glass-live-path-check.py, glass-privilege-check.py and gtk-window-ground-check.py.",
-"Universe-OS-HANDOFF.md": "the project handoff document - what the system is, how it is built, the folder map and the traps.",
-"Universe-OS-transcript.md": "the detailed knowledge base and raw session transcript behind the handoff.",
 "audits/": "the security and UX audit reports.",
 }
 
 for path, desc in KEY_FILES.items():
     add("What is %s in the Universe OS project?" % path, desc)
 
-SKIP_DIRS = {"build", "node_modules", "target", ".git", "__pycache__", ".workbuddy", "plymouth-build", "attic", "dist", "out", ".cache"}
+SKIP_DIRS = {"build", "node_modules", "target", ".git", "__pycache__", "plymouth-build", "attic", "dist", "out", ".cache"}
 TEXT_EXT = {".sh", ".py", ".rs", ".c", ".h", ".css", ".js", ".mjs", ".html", ".json", ".md", ".desktop", ".service", ".rules", ".toml", ".cfg", ".xml", ".txt", ".conf", ".policy", ".schema", ".gschema.xml", ".in"}
 MAX_SIZE = 200 * 1024
 
@@ -272,7 +270,7 @@ def purpose_of(path, text):
 def walk():
     found = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
         rel = os.path.relpath(dirpath, ROOT)
         if rel == ".":
             rel = ""
@@ -316,10 +314,7 @@ for rel, text in files:
         "%s is %s." % (rel, desc))
     count += 1
 
-DOCS = [
-    os.path.join(ROOT, "Universe-OS-HANDOFF.md"),
-    os.path.join(ROOT, ".workbuddy", "memory", "MEMORY.md"),
-]
+DOCS = []
 BAD_TITLES = {"assistant", "user", "blocked", "tools", "notes", "todo", "next", "done"}
 PERSIAN = re.compile(r"[\u0600-\u06FF]")
 

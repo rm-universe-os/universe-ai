@@ -571,10 +571,7 @@ these are verified facts from the build machine.
   not yet in the ISO).
 - `gnome-apps/` - the Python drafts of the GNOME apps before they land in the
   rootfs.
-- Root documents: `Universe-OS-HANDOFF.md` (what the system is, how it is
-  built, the folder map, the traps), `Universe-OS-transcript.md` (the detailed
-  knowledge base and raw session transcript), `audits/` (security and UX
-  reports), `assets/` and `logo/` (raw art), `plymouth-build/` (the old frame
-  generator, superseded).
+- Root documents: `audits/` (security and UX reports), `assets/` and
+  `logo/` (raw art), `plymouth-build/` (the old frame generator, superseded).
 - Build order: `sync-rootfs-to-chroot.sh` (with sudo) -> `build-iso-noroot.sh`
   (as the normal user, never root) -> verify with the testtools and a QEMU boot.
