@@ -6,12 +6,8 @@ const CHECKER = process.env.UAI_BG === "checker";
 if (CHECKER) document.body.classList.add("checker");
 const canvas = document.getElementById("pet");
 let wantCapture = null;
-const origRAF = window.requestAnimationFrame.bind(window);
-window.requestAnimationFrame = function(cb) {
-    return origRAF(function(t) {
-        cb(t);
-        if (wantCapture) readCapture();
-    });
+window.__uaiAfterPaint = function() {
+    if (wantCapture) readCapture();
 };
 
 function readCapture() {
@@ -78,8 +74,10 @@ window.__uaiCapture = function() {
         }, 900);
     });
 };
+const CAPTURE = /(?:\?|&)capture=1/.test(location.search);
 const mascot = window.UniverseAI.init(canvas, {
-    background: false
+    background: false,
+    alwaysRender: CAPTURE
 
 });
 window.__uaiMascot = mascot;

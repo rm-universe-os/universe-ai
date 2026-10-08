@@ -48,6 +48,7 @@
         canvas.__universeAI = true;
         var softGL = opts.softwareGL !== undefined ? !!opts.softwareGL :
             softwareGL();
+        var alwaysRender = !!opts.alwaysRender;
         var renderer;
         try {
             renderer = new THREE.WebGLRenderer({
@@ -1231,54 +1232,86 @@
         mask.visible = false;
         world.add(mask);
 
-        function circuitTexture() {
+        var circuitCanvas = null,
+            circuitGlowCanvas = null;
+
+        function buildCircuitCanvases() {
             var W = 512,
                 H = 640;
-            var c = document.createElement("canvas");
-            c.width = W;
-            c.height = H;
-            var x = c.getContext("2d");
-            x.fillStyle = "#ffffff";
-            x.fillRect(0, 0, W, H);
+            var etched = document.createElement("canvas");
+            etched.width = W;
+            etched.height = H;
+            var e = etched.getContext("2d");
+            e.fillStyle = "#ffffff";
+            e.fillRect(0, 0, W, H);
+            var glow = document.createElement("canvas");
+            glow.width = W;
+            glow.height = H;
+            var g = glow.getContext("2d");
             var seed = 9173;
             function rr() {
                 seed = (seed * 1103515245 + 12345) & 0x7fffffff;
                 return seed / 0x7fffffff;
             }
-            x.lineCap = "round";
+            e.lineCap = "round";
+            g.lineCap = "round";
             for (var ci = 0; ci < 46; ci++) {
                 var px = Math.floor(rr() * W),
                     py = Math.floor(rr() * H);
                 var a = Math.floor(rr() * 4) * Math.PI / 2;
                 var cyan = rr() < 0.30;
-                x.strokeStyle = cyan
-                    ? "rgba(52, 190, 235, " + (0.50 + rr() * 0.35).toFixed(2) + ")"
-                    : "rgba(34, 200, 118, " + (0.50 + rr() * 0.35).toFixed(2) + ")";
-                x.lineWidth = rr() < 0.25 ? 3.6 : 2.2;
-                x.beginPath();
-                x.moveTo(px, py);
+                var alpha = (0.34 + rr() * 0.30).toFixed(2);
+                var wdt = rr() < 0.25 ? 3.6 : 2.2;
+                e.strokeStyle = "rgba(28, 48, 40, " + (0.30 + rr() * 0.22).toFixed(2) + ")";
+                g.strokeStyle = cyan ? "rgba(82, 210, 255, " + alpha + ")"
+                                     : "rgba(52, 255, 150, " + alpha + ")";
+                e.lineWidth = wdt;
+                g.lineWidth = wdt;
+                e.beginPath();
+                g.beginPath();
+                e.moveTo(px, py);
+                g.moveTo(px, py);
                 var segs = 3 + Math.floor(rr() * 4);
                 for (var s = 0; s < segs; s++) {
                     var len = 26 + rr() * 76;
                     px += Math.cos(a) * len;
                     py += Math.sin(a) * len;
-                    x.lineTo(px, py);
+                    e.lineTo(px, py);
+                    g.lineTo(px, py);
                     a += (rr() < 0.5 ? -1 : 1) * Math.PI / 2;
                 }
-                x.stroke();
-                x.fillStyle = "rgba(16, 84, 64, 0.45)";
-                x.fillRect(px - 7, py - 5, 14, 10);
-                x.strokeStyle = cyan ? "rgba(52, 190, 235, 0.85)"
-                                     : "rgba(34, 200, 118, 0.85)";
-                x.lineWidth = 1.4;
-                x.strokeRect(px - 7, py - 5, 14, 10);
-                x.fillStyle = cyan ? "rgba(140, 236, 255, 0.95)"
-                                   : "rgba(96, 255, 172, 0.95)";
-                x.beginPath();
-                x.arc(px, py, 3.0, 0, Math.PI * 2);
-                x.fill();
+                e.stroke();
+                g.stroke();
+                e.fillStyle = "rgba(22, 44, 36, 0.42)";
+                e.fillRect(px - 7, py - 5, 14, 10);
+                e.strokeStyle = "rgba(30, 52, 44, 0.75)";
+                e.lineWidth = 1.4;
+                e.strokeRect(px - 7, py - 5, 14, 10);
+                g.fillStyle = cyan ? "rgba(140, 236, 255, 0.28)" : "rgba(96, 255, 172, 0.28)";
+                g.fillRect(px - 7, py - 5, 14, 10);
+                g.strokeStyle = cyan ? "rgba(140, 236, 255, 0.85)" : "rgba(96, 255, 172, 0.85)";
+                g.lineWidth = 1.4;
+                g.strokeRect(px - 7, py - 5, 14, 10);
+                g.fillStyle = cyan ? "rgba(190, 244, 255, 0.95)" : "rgba(150, 255, 196, 0.95)";
+                g.beginPath();
+                g.arc(px, py, 3.0, 0, Math.PI * 2);
+                g.fill();
             }
-            var tex = new THREE.CanvasTexture(c);
+            circuitCanvas = etched;
+            circuitGlowCanvas = glow;
+        }
+        buildCircuitCanvases();
+
+        function circuitTexture() {
+            var tex = new THREE.CanvasTexture(circuitCanvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(0.4505, 0.3546);
+            tex.offset.set(0.5, 0.5106);
+            return tex;
+        }
+
+        function circuitGlowTexture() {
+            var tex = new THREE.CanvasTexture(circuitGlowCanvas);
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
             tex.repeat.set(0.4505, 0.3546);
             tex.offset.set(0.5, 0.5106);
@@ -1294,7 +1327,7 @@
         }), 1.0);
         maskFaceMat.renderOrder = 30;
         var maskSideMat = hackMat(new THREE.MeshBasicMaterial({
-            color: 0xbfb8aa
+            color: 0x2a3644
         }), 1.0);
         maskSideMat.renderOrder = 30;
         var maskDarkMat = hackMat(new THREE.MeshBasicMaterial({
@@ -1387,7 +1420,7 @@
             return cur;
         }
 
-        var IVORY = new THREE.Color(0xefe9dc);
+        var IVORY = new THREE.Color(0x212c3a);
 
         function plateShade(x, y) {
             var nx = 2 * DOME_X * x,
@@ -1448,6 +1481,26 @@
         faceMesh.renderOrder = 30;
         mask.add(faceMesh);
 
+        var maskCircuitGlow = new THREE.Mesh(faceMesh.geometry, [
+            new THREE.MeshBasicMaterial({
+                map: circuitGlowTexture(),
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            }),
+            new THREE.MeshBasicMaterial({
+                color: 0x16241d,
+                transparent: true,
+                opacity: 0
+            })
+        ]);
+        maskCircuitGlow.position.z = -0.033;
+        maskCircuitGlow.renderOrder = 30;
+        mask.add(maskCircuitGlow);
+        mkMat(hackMats, maskCircuitGlow.material[0], 0.5);
+        mkMat(hackMats, maskCircuitGlow.material[1], 0.5);
+
         var maskOutlineMat = new THREE.MeshBasicMaterial({
             color: 0x2bff9a,
             transparent: true,
@@ -1489,46 +1542,20 @@
             mask.add(sh);
         }
 
+
         [-1, 1].forEach(function(sgn) {
             var s = new THREE.Shape();
-            s.moveTo(sgn * 0.88, 0.83);
-            s.bezierCurveTo(sgn * 0.78, 0.925, sgn * 0.60, 0.95,
-                sgn * 0.44, 0.90);
-            s.bezierCurveTo(sgn * 0.30, 0.865, sgn * 0.19, 0.755,
-                sgn * 0.115, 0.60);
-            s.bezierCurveTo(sgn * 0.20, 0.655, sgn * 0.36, 0.745,
-                sgn * 0.50, 0.775);
-            s.bezierCurveTo(sgn * 0.64, 0.805, sgn * 0.78, 0.79,
-                sgn * 0.88, 0.83);
+            s.moveTo(sgn * 0.30, 0.46);
+            s.quadraticCurveTo(sgn * 0.52, 0.525, sgn * 0.72, 0.505);
+            s.quadraticCurveTo(sgn * 0.79, 0.475, sgn * 0.76, 0.395);
+            s.quadraticCurveTo(sgn * 0.54, 0.335, sgn * 0.33, 0.355);
+            s.quadraticCurveTo(sgn * 0.255, 0.405, sgn * 0.30, 0.46);
             var m = flatMesh(s, maskDarkMat, 31, 0.022);
-            m.position.z = 0.052;
+            m.position.z = 0.046;
             mask.add(m);
-            featureShadow(m, 0.013, -0.017);
+            featureShadow(m, 0.010, -0.014);
         });
 
-        [-1, 1].forEach(function(sgn) {
-            var s = new THREE.Shape();
-            s.moveTo(sgn * 0.72, 0.415);
-            s.quadraticCurveTo(sgn * 0.50, 0.50, sgn * 0.25, 0.375);
-            s.quadraticCurveTo(sgn * 0.50, 0.30, sgn * 0.72, 0.415);
-            var m = flatMesh(s, maskDarkMat, 31, 0.02);
-            m.position.z = 0.045;
-            mask.add(m);
-        });
-
-        [-1, 1].forEach(function(sgn) {
-            var b = new THREE.Sprite(new THREE.SpriteMaterial({
-                map: maskBlushTex,
-                transparent: true,
-                opacity: 0,
-                depthWrite: false
-            }));
-            b.position.set(sgn * 0.82, 0.0, 0.055 + domeZ(0.82, 0.0));
-            b.scale.setScalar(0.42);
-            b.renderOrder = 31;
-            mask.add(b);
-            mkMat(hackMats, b.material, 0.36);
-        });
 
         var maskSheen = new THREE.Sprite(new THREE.SpriteMaterial({
             map: glowTexture("rgba(255,255,255,.45)",
@@ -1543,191 +1570,35 @@
         mask.add(maskSheen);
         mkMat(hackMats, maskSheen.material, 0.16);
 
-        [-1, 1].forEach(function(sgn) {
-            var s = new THREE.Shape();
-            s.moveTo(sgn * 0.005, -0.295);
-            s.bezierCurveTo(sgn * 0.06, -0.305, sgn * 0.10, -0.315,
-                sgn * 0.115, -0.325);
-            s.bezierCurveTo(sgn * 0.16, -0.36, sgn * 0.21, -0.415,
-                sgn * 0.26, -0.445);
-            s.bezierCurveTo(sgn * 0.35, -0.425, sgn * 0.40, -0.41,
-                sgn * 0.44, -0.40);
-            s.bezierCurveTo(sgn * 0.52, -0.385, sgn * 0.585, -0.36,
-                sgn * 0.63, -0.335);
-            s.bezierCurveTo(sgn * 0.68, -0.305, sgn * 0.73, -0.265,
-                sgn * 0.755, -0.24);
-            s.bezierCurveTo(sgn * 0.79, -0.215, sgn * 0.815, -0.255,
-                sgn * 0.80, -0.29);
-            s.bezierCurveTo(sgn * 0.775, -0.335, sgn * 0.74, -0.36,
-                sgn * 0.70, -0.39);
-            s.bezierCurveTo(sgn * 0.64, -0.44, sgn * 0.57, -0.49,
-                sgn * 0.48, -0.53);
-            s.bezierCurveTo(sgn * 0.40, -0.565, sgn * 0.30, -0.585,
-                sgn * 0.22, -0.60);
-            s.bezierCurveTo(sgn * 0.19, -0.605, sgn * 0.165, -0.595,
-                sgn * 0.16, -0.585);
-            s.bezierCurveTo(sgn * 0.15, -0.50, sgn * 0.13, -0.40,
-                sgn * 0.005, -0.295);
-            var m = flatMesh(s, maskDarkMat, 31, 0.02);
-            m.position.z = 0.046;
-            mask.add(m);
-            featureShadow(m, 0.011, -0.015);
-        });
-
         (function() {
-            var s = new THREE.Shape();
-            s.moveTo(-0.30, -0.575);
-            s.quadraticCurveTo(0, -0.635, 0.30, -0.575);
-            s.lineTo(0.30, -0.597);
-            s.quadraticCurveTo(0, -0.657, -0.30, -0.597);
-            s.closePath();
-            var m = flatMesh(s, maskDarkMat, 31, 0.015);
-            m.position.z = 0.046;
-            mask.add(m);
-
-            var r = new THREE.Shape();
-            r.moveTo(-0.285, -0.605);
-            r.quadraticCurveTo(0, -0.668, 0.285, -0.605);
-            r.lineTo(0.285, -0.638);
-            r.quadraticCurveTo(0, -0.701, -0.285, -0.638);
-            r.closePath();
-            var rm = flatMesh(r, maskRidgeMat, 31, 0.013);
-            rm.position.z = 0.047;
-            mask.add(rm);
-        })();
-
-        (function() {
-            var s = new THREE.Shape();
-            s.moveTo(-0.13, -0.775);
-            s.bezierCurveTo(-0.135, -0.95, -0.105, -1.16, -0.068, -1.30);
-            s.bezierCurveTo(-0.052, -1.375, -0.028, -1.425, 0, -1.425);
-            s.bezierCurveTo(0.028, -1.425, 0.052, -1.375, 0.068, -1.30);
-            s.bezierCurveTo(0.105, -1.16, 0.135, -0.95, 0.13, -0.775);
-            s.quadraticCurveTo(0, -0.80, -0.13, -0.775);
-            var m = flatMesh(s, maskDarkMat, 31, 0.02);
-            m.position.z = 0.046;
-            mask.add(m);
-            featureShadow(m, 0.009, -0.013);
-        })();
-
-        (function() {
-            var STATIONS = [
-                [ 0.400, 0.046, 0.003],
-                [ 0.300, 0.062, 0.009],
-                [ 0.190, 0.078, 0.019],
-                [ 0.070, 0.100, 0.034],
-                [-0.040, 0.132, 0.052],
-                [-0.120, 0.172, 0.068],
-                [-0.175, 0.212, 0.076],
-                [-0.215, 0.258, 0.074],
-                [-0.250, 0.292, 0.062],
-                [-0.280, 0.262, 0.042],
-                [-0.305, 0.165, 0.020],
-                [-0.325, 0.055, 0.006]
-            ];
-            var SEG = 12;
-            var BASE_Z = 0.050;
-            var LAST = STATIONS.length - 1;
-
-            function surfaceZ(x, y) {
-                var lo = 0;
-                var hi = LAST;
-                if (y >= STATIONS[0][0]) {
-                    hi = 0;
-                } else if (y <= STATIONS[LAST][0]) {
-                    lo = LAST;
-                } else {
-                    for (var i = 0; i < LAST; i++) {
-                        if (y <= STATIONS[i][0] && y >= STATIONS[i + 1][0]) {
-                            lo = i;
-                            hi = i + 1;
-                            break;
-                        }
-                    }
-                }
-                var t = (STATIONS[lo][0] - y) /
-                        Math.max(1e-6, STATIONS[lo][0] - STATIONS[hi][0]);
-                var w = STATIONS[lo][1] +
-                        (STATIONS[hi][1] - STATIONS[lo][1]) * t;
-                var h = STATIONS[lo][2] +
-                        (STATIONS[hi][2] - STATIONS[lo][2]) * t;
-                var s = Math.min(1, Math.abs(x) / Math.max(1e-6, w));
-                return BASE_Z + h * Math.sqrt(Math.max(0, 1 - s * s));
-            }
-
-            var positions = [];
-            var colours = [];
-            var indices = [];
-            var bright = new THREE.Color(0xf2ede3);
-            var shade = new THREE.Color(0xcdc4b4);
-            var tint = new THREE.Color();
-            for (var si = 0; si <= LAST; si++) {
-                var sy = STATIONS[si][0];
-                var sw = STATIONS[si][1];
-                var sh = STATIONS[si][2];
-                for (var k = 0; k <= SEG; k++) {
-                    var th = (k / SEG - 0.5) * Math.PI;
-                    positions.push(sw * Math.sin(th), sy,
-                                   BASE_Z + sh * Math.cos(th));
-                    var front = Math.cos(th);
-                    var low = Math.min(1, Math.max(0, (sy + 0.34) / 0.16));
-                    var lit = 0.26 + 0.74 * front * (0.35 + 0.65 * low);
-                    tint.copy(shade).lerp(bright, Math.min(1, lit));
-                    colours.push(tint.r, tint.g, tint.b);
-                }
-            }
-            var ring = SEG + 1;
-            for (var sj = 0; sj < LAST; sj++) {
-                for (var k2 = 0; k2 < SEG; k2++) {
-                    var a0 = sj * ring + k2;
-                    var a1 = a0 + 1;
-                    var b0 = a0 + ring;
-                    var b1 = b0 + 1;
-                    indices.push(a0, b0, a1, a1, b0, b1);
-                }
-            }
-            var noseGeo = new THREE.BufferGeometry();
-            noseGeo.setAttribute("position",
-                new THREE.BufferAttribute(new Float32Array(positions), 3));
-            noseGeo.setAttribute("color",
-                new THREE.BufferAttribute(new Float32Array(colours), 3));
-            noseGeo.setIndex(indices);
-            bendMask(noseGeo);
-            var noseMesh = new THREE.Mesh(noseGeo, maskNoseMat);
-            noseMesh.renderOrder = 31;
-            mask.add(noseMesh);
-
-            [-1, 1].forEach(function(sgn) {
-                var n = new THREE.Shape();
-                n.moveTo(sgn * 0.062, -0.230);
-                n.quadraticCurveTo(sgn * 0.182, -0.334, sgn * 0.248, -0.258);
-                n.quadraticCurveTo(sgn * 0.150, -0.240, sgn * 0.062, -0.230);
-                var nm = flatMesh(n, maskDarkMat, 31, 0.012);
-                var pos = nm.geometry.attributes.position;
-                for (var vi = 0; vi < pos.count; vi++) {
-                    var vx = pos.getX(vi);
-                    var vy = pos.getY(vi);
-                    pos.setZ(vi, surfaceZ(vx, vy) + 0.005 + domeZ(vx, vy));
-                }
-                pos.needsUpdate = true;
-                nm.geometry.computeBoundingSphere();
-                mask.add(nm);
+            [-0.60, -0.71, -0.82].forEach(function(vy, vi) {
+                var w = vi === 1 ? 0.30 : 0.21;
+                var s = new THREE.Shape();
+                s.moveTo(-w, vy + 0.022);
+                s.quadraticCurveTo(0, vy + 0.034, w, vy + 0.022);
+                s.quadraticCurveTo(w + 0.016, vy, w, vy - 0.022);
+                s.quadraticCurveTo(0, vy - 0.034, -w, vy - 0.022);
+                s.quadraticCurveTo(-w - 0.016, vy, -w, vy + 0.022);
+                var m = flatMesh(s, maskDarkMat, 31, 0.016);
+                m.position.z = 0.046;
+                mask.add(m);
             });
-
-            var shadeTex = glowTexture("rgba(58,54,62,.85)",
-                "rgba(58,54,62,.30)");
-            var sh = new THREE.Sprite(new THREE.SpriteMaterial({
-                map: shadeTex,
+            var vg = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: glowTexture("rgba(43,255,154,.50)",
+                    "rgba(43,255,154,.10)"),
                 transparent: true,
                 opacity: 0,
                 depthWrite: false
             }));
-            sh.position.set(0, -0.298, 0.056 + domeZ(0, -0.298));
-            sh.scale.set(0.62, 0.30, 1);
-            sh.renderOrder = 31;
-            mask.add(sh);
-            mkMat(hackMats, sh.material, 0.55);
+            vg.position.set(0, -0.71, 0.050 + domeZ(0, -0.71));
+            vg.scale.set(0.92, 0.52, 1);
+            vg.renderOrder = 31;
+            mask.add(vg);
+            mkMat(hackMats, vg.material, 0.30);
         })();
+
+
+
 
         var hackEyes = [];
         [-1, 1].forEach(function(sgn) {
@@ -1741,7 +1612,7 @@
                 depthTest: false
             }));
             g.position.set(sgn * 0.49, 0.40, 0.16);
-            g.scale.setScalar(0.52);
+            g.scale.set(0.62, 0.44, 1);
             g.renderOrder = 33;
             mask.add(g);
             hackEyes.push(g);
@@ -1759,7 +1630,7 @@
                 depthTest: false
             }));
             hg.position.set(sgn * 0.49, 0.40, 0.10);
-            hg.scale.setScalar(0.78);
+            hg.scale.setScalar(0.88);
             hg.renderOrder = 32;
             mask.add(hg);
             hackEyeGlow.push(hg);
@@ -2402,12 +2273,12 @@
             } else {
                 rafId = requestAnimationFrame(frame);
             }
-            if (!visible || document.hidden) return;
+            if (!alwaysRender && (!visible || document.hidden)) return;
             if (typeof now === "number") {
                 if (now - lastPaint < step) return;
                 lastPaint = now;
             }
-            var dt = Math.min(ck.getDelta(), 0.05),
+            var dt = Math.min(ck.getDelta(), 0.12),
                 t = ck.getElapsedTime();
             if (dragging) gazeHeat = Math.max(gazeHeat, 0.8);
             gazeHeat = Math.max(0, gazeHeat - dt);
@@ -2539,9 +2410,11 @@
             updateOutfits(dt, t);
             updateMusic(dt, t);
             renderer.render(scene, cam);
+            if (window.__uaiAfterPaint) window.__uaiAfterPaint();
         }
         if (reduced) {
             renderer.render(scene, cam);
+            if (window.__uaiAfterPaint) window.__uaiAfterPaint();
         } else {
             frame();
         }
@@ -2567,8 +2440,12 @@
             },
             outfit: function(name) {
                 name = String(name || "");
+                var wasDev = devOn,
+                    wasHack = hackOn;
                 devOn = name === "developer";
                 hackOn = name === "hacker";
+                if (devOn !== wasDev || hackOn !== wasHack)
+                    lastEngage = performance.now() + 2200;
             },
 
             dispose: function() {

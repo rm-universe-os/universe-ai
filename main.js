@@ -37,6 +37,11 @@ const CONFIG_DIR = process.env.UAI_CONFIG_DIR || path.join(HOME, ".config", "uni
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 app.setName("Universe AI");
 app.commandLine.appendSwitch("class", "universe-ai");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+if (process.env.UAI_LOGO) {
+    app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+}
 if (process.env.UAI_SOFTWARE_GL === "1") {
     app.commandLine.appendSwitch("enable-unsafe-swiftshader");
     app.disableHardwareAcceleration();
@@ -755,19 +760,20 @@ const THEME_MODE = {
 };
 
 function modeFromTheme() {
+    let t;
     try {
-        let t = execFileSync("gsettings", ["get", "org.gnome.desktop.interface", "gtk-theme"], {
+        t = execFileSync("gsettings", ["get", "org.gnome.desktop.interface", "gtk-theme"], {
             encoding: "utf8",
             timeout: 2e3
-        }).trim().replace(/^'|'$/g, "");
-        if (t.endsWith("-B"))
-            t = t.slice(0, -2);
-        if (t.startsWith("Universe-Live-"))
-            t = "Universe-" + t.slice("Universe-Live-".length);
-        return THEME_MODE[t] || null
+        }).trim().replace(/^'|'$/g, "")
     } catch (_) {
         return null
     }
+    if (t.endsWith("-B"))
+        t = t.slice(0, -2);
+    if (t.startsWith("Universe-Live-"))
+        t = "Universe-" + t.slice("Universe-Live-".length);
+    return THEME_MODE[t] || "default"
 }
 
 function readSystemMode() {
@@ -775,7 +781,7 @@ function readSystemMode() {
         const m = fs.readFileSync(MODE_FILE, "utf8").trim();
         if (MODES.includes(m)) return m
     } catch (_) {}
-    return modeFromTheme() || "default"
+    return modeFromTheme()
 }
 
 function applyOutfitMode(name, force) {
@@ -800,13 +806,29 @@ function previewMode(name) {
 }
 
 function watchSystemMode() {
-    systemMode = readSystemMode();
+    systemMode = readSystemMode() || "default";
     outfitMode = systemMode;
+    let pendingMode = null,
+        pendingCount = 0;
     const poll = () => {
         const m = readSystemMode();
-        if (m === systemMode) return;
-        systemMode = m;
-        applyOutfitMode(systemMode)
+        if (!m) return;
+        if (m === systemMode) {
+            pendingMode = null;
+            pendingCount = 0;
+            return;
+        }
+        if (m === pendingMode) pendingCount++;
+        else {
+            pendingMode = m;
+            pendingCount = 1;
+        }
+        if (pendingCount >= 2) {
+            systemMode = m;
+            pendingMode = null;
+            pendingCount = 0;
+            applyOutfitMode(systemMode);
+        }
     };
     try {
         fs.watchFile(MODE_FILE, {
@@ -4258,9 +4280,11 @@ app.whenReady().then(async () => {
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
-                sandbox: false
+                sandbox: false,
+                backgroundThrottling: false
             }
         });
+        cap.showInactive();
         cap.loadFile(path.join(APP_DIR, "renderer", "index.html"), {
             query: {
                 capture: "1"
